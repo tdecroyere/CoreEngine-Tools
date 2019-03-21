@@ -27,7 +27,7 @@ copyFiles() {
     #rm -R $tempDirectory
 }
 
-echo [93mCompiling CoreEngine Compiler...[0m
+echo [93mCompiling CoreEngine Compiler...[0m
 
 dotnet build /nologo -c Debug -v Q -o "." "..\..\src\CoreEngineCompiler"
 

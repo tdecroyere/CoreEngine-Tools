@@ -1,5 +1,5 @@
 @ECHO OFF
 pushd .\build\Windows
-.\CoreEngineCompiler.exe %1 %2
+.\CoreEngineCompiler.exe "..\..\TestData\TestProject.ceproj"
 popd
 @ECHO ON

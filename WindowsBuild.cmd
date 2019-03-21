@@ -3,7 +3,7 @@
 IF NOT EXIST build\Windows mkdir build\Windows
 pushd build\Windows
 
-ECHO [93mCompiling CoreEngine Compiler...[0m
+ECHO [93mCompiling CoreEngine Compiler...[0m
 dotnet.exe build /nologo -c Debug -v Q -o "." "..\..\src\CoreEngineCompiler"
 
 @IF %ERRORLEVEL% == 0 (

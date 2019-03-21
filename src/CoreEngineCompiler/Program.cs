@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using CoreEngine.ResourceCompilers;
 
 namespace CoreEngine.Compiler
 {
@@ -8,22 +7,21 @@ namespace CoreEngine.Compiler
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("CoreEngine Compiler Tool");
-
-            var resourceCompiler = new ResourceCompiler();
-
-            if (args.Length > 1)
+            Console.WriteLine("CoreEngine Compiler Tool 0.1");
+            Console.WriteLine();
+            
+            if (args.Length > 0)
             {
                 var input = args[0];
-                var output = args[1];
 
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Compiling '{input}' to '{output}'...");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"Compiling '{input}'...");
                 Console.ForegroundColor = ConsoleColor.Gray;
 
                 try
                 {
-                    await resourceCompiler.CompileFileAsync(input, output);
+                    var projectCompiler = new ProjectCompiler();
+                    await projectCompiler.CompileProject(input);
                 }
 
                 catch(Exception e)
