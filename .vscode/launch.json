@@ -9,7 +9,7 @@
             "type": "coreclr",
             "request": "launch",
             "program": "./CoreEngineCompiler.exe",
-            "args": ["TestProject.ceproj"],
+            "args": ["../../TestData/TestProject.ceproj"],
             "cwd": "${workspaceFolder}/build/Windows",
             // For more information about the 'console' field, see https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md#console-terminal-window
             "console": "internalConsole",
