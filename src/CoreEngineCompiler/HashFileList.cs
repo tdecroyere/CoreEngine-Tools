@@ -17,6 +17,9 @@ namespace CoreEngine.Compiler
 
         public bool HasFileChanged(string path, ReadOnlySpan<byte> inputData)
         {
+            // TODO: Use the file date first to quickly reject the file?
+            // TODO: Store the last modified date in the Dictionary
+
             var hash = ComputeFileHash(inputData);
 
             if (this.hashList.ContainsKey(path) && hash.SequenceEqual(new ReadOnlySpan<byte>(this.hashList[path])))

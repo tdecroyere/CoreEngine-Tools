@@ -12,18 +12,18 @@ namespace CoreEngine.Compiler
 {
     public class ProjectCompiler
     {
+        private readonly ResourceCompiler resourceCompiler;
         private readonly Logger logger;
 
-        public ProjectCompiler(Logger logger)
+        public ProjectCompiler(ResourceCompiler resourceCompiler, Logger logger)
         {
+            this.resourceCompiler = resourceCompiler;
             this.logger = logger;
         }
 
-        public async Task CompileProject(string path, bool rebuildAll)
+        public async Task CompileProject(string path, bool isWatchMode, bool rebuildAll)
         {
-            // TODO: Only re-compile changed source files
             // TODO: Add a watcher functionnality
-            // TODO: Proper logging with verbose mode on/off
 
             var project = OpenProject(path);
 
@@ -52,8 +52,7 @@ namespace CoreEngine.Compiler
             this.logger.WriteMessage($"InputPath: {inputDirectory}", LogMessageType.Debug);
             this.logger.WriteMessage($"OutputPath: {outputDirectory}", LogMessageType.Debug);
 
-            var resourceCompiler = new ResourceCompiler();
-            var sourceFiles = SearchSupportedSourceFiles(resourceCompiler, inputDirectory);
+            var sourceFiles = SearchSupportedSourceFiles(inputDirectory);
             var remainingDestinationFiles = new List<string>(Directory.GetFiles(outputDirectory, "*", SearchOption.AllDirectories));
             var compiledFilesCount = 0;
             var stopwatch = new Stopwatch();
@@ -65,13 +64,13 @@ namespace CoreEngine.Compiler
                 var hasFileChanged = hashFileList.HasFileChanged(sourceFile, sourceData.Span);
 
                 var sourceFileAbsoluteDirectory = ConstructSourceFileAbsolutDirectory(inputDirectory, sourceFile);
-                var destinationPath = ConstructDestinationPath(resourceCompiler, sourceFileAbsoluteDirectory, sourceFile, outputDirectory);
+                var destinationPath = ConstructDestinationPath(sourceFileAbsoluteDirectory, sourceFile, outputDirectory);
 
                 remainingDestinationFiles.Remove(destinationPath);
 
                 if (hasFileChanged || !File.Exists(destinationPath))
                 {
-                    await CompileSourceFile(resourceCompiler, sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath, sourceData);
+                    await CompileSourceFile(sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath, sourceData);
                     compiledFilesCount++;
                 }
             }
@@ -107,9 +106,9 @@ namespace CoreEngine.Compiler
             return deserializer.Deserialize<Project>(input);
         }
 
-        private static string[] SearchSupportedSourceFiles(ResourceCompiler resourceCompiler, string inputDirectory)
+        private string[] SearchSupportedSourceFiles(string inputDirectory)
         {
-            var sourceFileExtensions = resourceCompiler.GetSupportedSourceFileExtensions();
+            var sourceFileExtensions = this.resourceCompiler.GetSupportedSourceFileExtensions();
             var searchPattern = string.Join("|", sourceFileExtensions).Replace(".", "*.");
 
             var sourceFiles = Directory.GetFiles(inputDirectory, searchPattern, SearchOption.AllDirectories);
@@ -128,18 +127,18 @@ namespace CoreEngine.Compiler
             return sourceFileAbsoluteDirectory;
         }
 
-        private static string ConstructDestinationPath(ResourceCompiler resourceCompiler, string sourceFileAbsoluteDirectory, string sourceFile, string outputDirectory)
+        private string ConstructDestinationPath(string sourceFileAbsoluteDirectory, string sourceFile, string outputDirectory)
         {
-            var destinationFileExtension = resourceCompiler.GetDestinationFileExtension(Path.GetExtension(sourceFile));
+            var destinationFileExtension = this.resourceCompiler.GetDestinationFileExtension(Path.GetExtension(sourceFile));
             var destinationFileName = $"{Path.GetFileNameWithoutExtension(sourceFile)}{destinationFileExtension}";
             var destinationPath = Path.Combine(outputDirectory, sourceFileAbsoluteDirectory, destinationFileName);
             return destinationPath;
         }
 
-        private async Task CompileSourceFile(ResourceCompiler resourceCompiler, string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath, ReadOnlyMemory<byte> sourceData)
+        private async Task CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath, ReadOnlyMemory<byte> sourceData)
         {
             this.logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageType.Action);
-            await resourceCompiler.CompileFileAsync(sourceFile, sourceData, destinationPath);
+            await this.resourceCompiler.CompileFileAsync(sourceFile, sourceData, destinationPath);
             this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
         }
 

@@ -1,14 +1,38 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using CoreEngine.Tools.Common;
+using CoreEngine.Tools.ResourceCompilers;
 
 namespace CoreEngine.Compiler
 {
     class Program
     {
+        private static async Task RunCompilePass(Logger logger, ResourceCompiler resourceCompiler, string input, bool isWatchMode)
+        {
+            logger.WriteMessage($"Compiling '{input}'...", LogMessageType.Important);
+
+            try
+            {
+                var projectCompiler = new ProjectCompiler(resourceCompiler, logger);
+                await projectCompiler.CompileProject(input, isWatchMode, false);
+            }
+
+            catch(Exception e)
+            {
+                logger.WriteMessage($"Error: {e.Message}", LogMessageType.Error);
+            }
+        }
+
         static async Task Main(string[] args)
         {
+            // TODO: Add verbose parameter
+            // TODO: Add help parameter
+            // TODO: Add rebuild parameter
+            // TODO: Add watch parameter
+
             var logger = new Logger();
+            var resourceCompiler = new ResourceCompiler();
 
             logger.WriteMessage("CoreEngine Compiler Tool version 0.1");
             logger.WriteLine();
@@ -16,18 +40,20 @@ namespace CoreEngine.Compiler
             if (args.Length > 0)
             {
                 var input = args[0];
+                var isWatchMode = (args.Length > 1 && args[1] == "--watch");
 
-                logger.WriteMessage($"Compiling '{input}'...", LogMessageType.Important);
-
-                try
+                if (!isWatchMode)
                 {
-                    var projectCompiler = new ProjectCompiler(logger);
-                    await projectCompiler.CompileProject(input, false);
+                    await RunCompilePass(logger, resourceCompiler, input, isWatchMode);
                 }
 
-                catch(Exception e)
+                else
                 {
-                    logger.WriteMessage($"Error: {e.Message}", LogMessageType.Error);
+                    while (true)
+                    {
+                        await RunCompilePass(logger, resourceCompiler, input, isWatchMode);
+                        Thread.Sleep(1000);
+                    }
                 }
             }
         }
