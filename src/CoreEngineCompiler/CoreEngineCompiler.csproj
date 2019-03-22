@@ -9,7 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CoreEngine.ResourceCompilers\CoreEngine.ResourceCompilers.csproj" />
+    <ProjectReference Include="..\CoreEngine.Tools.ResourceCompilers\CoreEngine.Tools.ResourceCompilers.csproj" />
+    <ProjectReference Include="..\CoreEngine.Tools.Common\CoreEngine.Tools.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>

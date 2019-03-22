@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace CoreEngine.ResourceCompilers
+namespace CoreEngine.Tools.ResourceCompilers
 {
     public abstract class ResourceDataCompiler
     {
@@ -20,6 +20,6 @@ namespace CoreEngine.ResourceCompilers
             get;
         }
 
-        public abstract Task<byte[]> CompileAsync(byte[] sourceData);
+        public abstract Task<byte[]> CompileAsync(ReadOnlyMemory<byte> sourceData);
     }
 }

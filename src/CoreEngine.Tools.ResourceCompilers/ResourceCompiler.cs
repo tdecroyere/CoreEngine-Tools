@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace CoreEngine.ResourceCompilers
+namespace CoreEngine.Tools.ResourceCompilers
 {
     public class ResourceCompiler
     {
@@ -33,10 +33,10 @@ namespace CoreEngine.ResourceCompilers
         }
 
         // TODO: Replace parameters by structs
-        public async Task CompileFileAsync(string input, string output)
+        public async Task CompileFileAsync(string inputPath, ReadOnlyMemory<byte> inputData, string output)
         {
             var outputDirectory = Path.GetDirectoryName(output);
-            var sourceFileExtension = Path.GetExtension(input);
+            var sourceFileExtension = Path.GetExtension(inputPath);
             var destinationFileExtension = Path.GetExtension(output);
 
             if (!this.dataCompilers.ContainsKey(sourceFileExtension))
@@ -53,7 +53,6 @@ namespace CoreEngine.ResourceCompilers
 
             // TODO: Check if file exists
 
-            var inputData = await File.ReadAllBytesAsync(input);
             var outputData = await dataCompiler.CompileAsync(inputData);
             
             if (!Directory.Exists(outputDirectory))

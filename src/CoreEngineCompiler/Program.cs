@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using CoreEngine.Tools.Common;
 
 namespace CoreEngine.Compiler
 {
@@ -7,28 +8,26 @@ namespace CoreEngine.Compiler
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("CoreEngine Compiler Tool 0.1");
-            Console.WriteLine();
+            var logger = new Logger();
+
+            logger.WriteMessage("CoreEngine Compiler Tool version 0.1");
+            logger.WriteLine();
             
             if (args.Length > 0)
             {
                 var input = args[0];
 
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"Compiling '{input}'...");
-                Console.ForegroundColor = ConsoleColor.Gray;
+                logger.WriteMessage($"Compiling '{input}'...", LogMessageType.Important);
 
                 try
                 {
-                    var projectCompiler = new ProjectCompiler();
-                    await projectCompiler.CompileProject(input);
+                    var projectCompiler = new ProjectCompiler(logger);
+                    await projectCompiler.CompileProject(input, false);
                 }
 
                 catch(Exception e)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"ERROR: {e.Message}");
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    logger.WriteMessage($"Error: {e.Message}", LogMessageType.Error);
                 }
             }
         }

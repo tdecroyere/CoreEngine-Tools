@@ -11,15 +11,16 @@
             "program": "./CoreEngineCompiler.exe",
             "args": ["../../TestData/TestProject.ceproj"],
             "cwd": "${workspaceFolder}/build/Windows",
-            // For more information about the 'console' field, see https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md#console-terminal-window
             "console": "internalConsole",
-            "stopAtEntry": false
-        },
-        {
-            "name": ".NET Core Attach",
-            "type": "coreclr",
-            "request": "attach",
-            "processId": "${command:pickProcess}"
+            "stopAtEntry": false,
+            "osx": {
+                "cwd": "${workspaceFolder}/build/MacOS",
+                "program": "./CoreEngineCompiler"
+            },
+            "windows": {
+                "cwd": "${workspaceFolder}/build/Windows/",
+                "program": "./CoreEngineCompiler.exe"
+            }
         }
     ]
 }

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using CoreEngine.ResourceCompilers;
+using CoreEngine.Tools.Common;
+using CoreEngine.Tools.ResourceCompilers;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -10,12 +12,14 @@ namespace CoreEngine.Compiler
 {
     public class ProjectCompiler
     {
-        public ProjectCompiler()
-        {
+        private readonly Logger logger;
 
+        public ProjectCompiler(Logger logger)
+        {
+            this.logger = logger;
         }
 
-        public async Task CompileProject(string path)
+        public async Task CompileProject(string path, bool rebuildAll)
         {
             // TODO: Only re-compile changed source files
             // TODO: Add a watcher functionnality
@@ -24,7 +28,7 @@ namespace CoreEngine.Compiler
             var project = OpenProject(path);
 
             var inputDirectory = Path.GetDirectoryName(Path.GetFullPath(path));
-            var inputObjDirectory = Path.Combine(inputDirectory, "obj");
+            var inputObjDirectory = Path.Combine(inputDirectory, ".coreengine");
             var outputDirectory = Path.GetFullPath(Path.Combine(inputDirectory, project.OutputDirectory));
 
             if (!Directory.Exists(outputDirectory))
@@ -38,28 +42,46 @@ namespace CoreEngine.Compiler
             }
 
             var hashListPath = Path.Combine(inputObjDirectory, "HashList");
-            var hashListFile = new HashListFile(hashListPath);
+            var hashFileList = new HashFileList();
 
-            Console.WriteLine($"InputPath: {inputDirectory}");
-            Console.WriteLine($"OutputPath: {outputDirectory}");
+            if (!rebuildAll)
+            {
+                hashFileList.ReadFile(hashListPath);
+            }
+
+            this.logger.WriteMessage($"InputPath: {inputDirectory}", LogMessageType.Debug);
+            this.logger.WriteMessage($"OutputPath: {outputDirectory}", LogMessageType.Debug);
 
             var resourceCompiler = new ResourceCompiler();
             var sourceFiles = SearchSupportedSourceFiles(resourceCompiler, inputDirectory);
             var remainingDestinationFiles = new List<string>(Directory.GetFiles(outputDirectory, "*", SearchOption.AllDirectories));
+            var compiledFilesCount = 0;
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             foreach (var sourceFile in sourceFiles)
             {
-                var hasFileChanged = hashListFile.HasFileChanged(sourceFile);
-                Console.WriteLine(hasFileChanged);
+                var sourceData = new ReadOnlyMemory<byte>(File.ReadAllBytes(sourceFile));
+                var hasFileChanged = hashFileList.HasFileChanged(sourceFile, sourceData.Span);
 
                 var sourceFileAbsoluteDirectory = ConstructSourceFileAbsolutDirectory(inputDirectory, sourceFile);
                 var destinationPath = ConstructDestinationPath(resourceCompiler, sourceFileAbsoluteDirectory, sourceFile, outputDirectory);
 
                 remainingDestinationFiles.Remove(destinationPath);
 
-                await CompileSourceFile(resourceCompiler, sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath);
+                if (hasFileChanged || !File.Exists(destinationPath))
+                {
+                    await CompileSourceFile(resourceCompiler, sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath, sourceData);
+                    compiledFilesCount++;
+                }
             }
 
+            stopwatch.Stop();
+
+            this.logger.WriteLine();
+            this.logger.WriteMessage($"Sucess: Compiled {compiledFilesCount} file(s) in {stopwatch.Elapsed}.", LogMessageType.Success);
+
+            hashFileList.WriteFile(hashListPath);
             CleanupOutputDirectory(outputDirectory, remainingDestinationFiles);
         }
 
@@ -114,24 +136,18 @@ namespace CoreEngine.Compiler
             return destinationPath;
         }
 
-        private static async Task CompileSourceFile(ResourceCompiler resourceCompiler, string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath)
+        private async Task CompileSourceFile(ResourceCompiler resourceCompiler, string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath, ReadOnlyMemory<byte> sourceData)
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileNameWithoutExtension(sourceFile))}'...");
-            Console.ForegroundColor = ConsoleColor.Gray;
-
-            await resourceCompiler.CompileFileAsync(sourceFile, destinationPath);
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.");
-            Console.ForegroundColor = ConsoleColor.Gray;
+            this.logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageType.Action);
+            await resourceCompiler.CompileFileAsync(sourceFile, sourceData, destinationPath);
+            this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
         }
 
-        private static void CleanupOutputDirectory(string outputDirectory, List<string> remainingDestinationFiles)
+        private void CleanupOutputDirectory(string outputDirectory, List<string> remainingDestinationFiles)
         {
             foreach (var remainingDestinationFile in remainingDestinationFiles)
             {
-                Console.WriteLine($"Cleaning file '{remainingDestinationFile}...");
+                this.logger.WriteMessage($"Cleaning file '{remainingDestinationFile}...", LogMessageType.Debug);
                 File.Delete(remainingDestinationFile);
             }
 
@@ -140,7 +156,7 @@ namespace CoreEngine.Compiler
                 if (Directory.GetFiles(directory).Length == 0 &&
                     Directory.GetDirectories(directory).Length == 0)
                 {
-                    Console.WriteLine($"Cleaning empty directory '{directory}...");
+                    this.logger.WriteMessage($"Cleaning empty directory '{directory}...", LogMessageType.Debug);
                     Directory.Delete(directory, false);
                 }
             }
