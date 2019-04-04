@@ -49,12 +49,16 @@ namespace CoreEngine.Compiler
                 hashFileList.ReadFile(hashListPath);
             }
 
-            this.logger.WriteMessage($"InputPath: {inputDirectory}", LogMessageType.Debug);
-            this.logger.WriteMessage($"OutputPath: {outputDirectory}", LogMessageType.Debug);
+            if (!isWatchMode)
+            {
+                this.logger.WriteMessage($"InputPath: {inputDirectory}", LogMessageType.Debug);
+                this.logger.WriteMessage($"OutputPath: {outputDirectory}", LogMessageType.Debug);
+            }
 
             var sourceFiles = SearchSupportedSourceFiles(inputDirectory);
             var remainingDestinationFiles = new List<string>(Directory.GetFiles(outputDirectory, "*", SearchOption.AllDirectories));
             var compiledFilesCount = 0;
+
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
@@ -77,8 +81,11 @@ namespace CoreEngine.Compiler
 
             stopwatch.Stop();
 
-            this.logger.WriteLine();
-            this.logger.WriteMessage($"Sucess: Compiled {compiledFilesCount} file(s) in {stopwatch.Elapsed}.", LogMessageType.Success);
+            if (compiledFilesCount > 0)
+            {
+                this.logger.WriteLine();
+                this.logger.WriteMessage($"Success: Compiled {compiledFilesCount} file(s) in {stopwatch.Elapsed}.", LogMessageType.Success);
+            }
 
             hashFileList.WriteFile(hashListPath);
             CleanupOutputDirectory(outputDirectory, remainingDestinationFiles);
@@ -146,8 +153,11 @@ namespace CoreEngine.Compiler
         {
             foreach (var remainingDestinationFile in remainingDestinationFiles)
             {
-                this.logger.WriteMessage($"Cleaning file '{remainingDestinationFile}...", LogMessageType.Debug);
-                File.Delete(remainingDestinationFile);
+                if (Path.GetFileName(remainingDestinationFile)[0] != '.')
+                {
+                    this.logger.WriteMessage($"Cleaning file '{remainingDestinationFile}...", LogMessageType.Debug);
+                    File.Delete(remainingDestinationFile);
+                }
             }
 
             foreach (var directory in Directory.GetDirectories(outputDirectory))

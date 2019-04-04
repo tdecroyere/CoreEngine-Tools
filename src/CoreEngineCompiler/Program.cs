@@ -10,7 +10,10 @@ namespace CoreEngine.Compiler
     {
         private static async Task RunCompilePass(Logger logger, ResourceCompiler resourceCompiler, string input, bool isWatchMode)
         {
-            logger.WriteMessage($"Compiling '{input}'...", LogMessageType.Important);
+            if (!isWatchMode)
+            {
+                logger.WriteMessage($"Compiling '{input}'...", LogMessageType.Important);
+            }
 
             try
             {
@@ -49,6 +52,8 @@ namespace CoreEngine.Compiler
 
                 else
                 {
+                    logger.WriteMessage("Entering watch mode...", LogMessageType.Action);
+
                     while (true)
                     {
                         await RunCompilePass(logger, resourceCompiler, input, isWatchMode);
