@@ -40,6 +40,7 @@ namespace CoreEngine.Tools.ResourceCompilers
 
             using var streamWriter = new StreamWriter(destinationMemoryStream);
             streamWriter.Write(inputText.Replace("Source", "Compiled"));
+            streamWriter.Flush();
 
             return Task.FromResult(destinationMemoryStream.ToArray());
         }

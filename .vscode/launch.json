@@ -8,9 +8,7 @@
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
-            "program": "./CoreEngineCompiler.exe",
             "args": ["../../TestData/TestProject.ceproj"],
-            "cwd": "${workspaceFolder}/build/Windows",
             "console": "internalConsole",
             "stopAtEntry": false,
             "osx": {
