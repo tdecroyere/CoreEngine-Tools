@@ -29,7 +29,7 @@ copyFiles() {
 
 echo [93mCompiling CoreEngine Compiler...[0m
 
-dotnet build /nologo -c Debug -v Q -o "." "..\..\src\CoreEngineCompiler"
+dotnet build --nologo -c Debug -v Q -o "." "..\..\src\CoreEngineCompiler"
 
 if [ $? -eq 0 ]; then
     copyFiles
