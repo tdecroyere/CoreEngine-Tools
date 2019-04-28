@@ -1,3 +1,1 @@
----
-OutputDirectory: "../../CoreEngine/tests/data/CompilerTests"
-...
+OutputDirectory: "../../CoreEngine/build/MacOS/CoreEngine.app/Contents/Resources"

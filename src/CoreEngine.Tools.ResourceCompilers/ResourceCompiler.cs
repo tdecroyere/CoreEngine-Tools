@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
+using CoreEngine.Tools.Common;
 
 namespace CoreEngine.Tools.ResourceCompilers
 {
     public class ResourceCompiler
     {
+        private readonly Logger logger;
         private IDictionary<string, ResourceDataCompiler> dataCompilers;
 
-        public ResourceCompiler()
+        public ResourceCompiler(Logger logger)
         {
+            this.logger = logger;
             this.dataCompilers = new Dictionary<string, ResourceDataCompiler>();
 
             AddInternalDataCompilers();
@@ -71,7 +74,7 @@ namespace CoreEngine.Tools.ResourceCompilers
             {
                 if (type.IsSubclassOf(typeof(ResourceDataCompiler)))
                 {
-                    var dataCompiler = (ResourceDataCompiler)Activator.CreateInstance(type);
+                    var dataCompiler = (ResourceDataCompiler)Activator.CreateInstance(type, this.logger);
 
                     foreach (var supportedExtension in dataCompiler.SupportedSourceExtensions)
                     {

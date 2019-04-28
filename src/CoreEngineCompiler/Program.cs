@@ -18,7 +18,7 @@ namespace CoreEngine.Compiler
             try
             {
                 var projectCompiler = new ProjectCompiler(resourceCompiler, logger);
-                await projectCompiler.CompileProject(input, isWatchMode, false);
+                await projectCompiler.CompileProject(input, isWatchMode, true);
             }
 
             catch(Exception e)
@@ -35,7 +35,7 @@ namespace CoreEngine.Compiler
             // TODO: Add watch parameter
 
             var logger = new Logger();
-            var resourceCompiler = new ResourceCompiler();
+            var resourceCompiler = new ResourceCompiler(logger);
 
             logger.WriteMessage("CoreEngine Compiler Tool version 0.1");
             logger.WriteLine();

@@ -116,10 +116,17 @@ namespace CoreEngine.Compiler
         private string[] SearchSupportedSourceFiles(string inputDirectory)
         {
             var sourceFileExtensions = this.resourceCompiler.GetSupportedSourceFileExtensions();
-            var searchPattern = string.Join("|", sourceFileExtensions).Replace(".", "*.");
+            var sourceFiles = new List<string>();
 
-            var sourceFiles = Directory.GetFiles(inputDirectory, searchPattern, SearchOption.AllDirectories);
-            return sourceFiles;
+            foreach (var fileExtension in sourceFileExtensions)
+            {
+                var searchPattern = fileExtension.Replace(".", "*.");
+                var sourceFilesForExtension = Directory.GetFiles(inputDirectory, searchPattern, SearchOption.AllDirectories);
+
+                sourceFiles.AddRange(sourceFilesForExtension);
+            }
+
+            return sourceFiles.ToArray();
         }
 
         private static string ConstructSourceFileAbsolutDirectory(string inputDirectory, string sourceFile)
