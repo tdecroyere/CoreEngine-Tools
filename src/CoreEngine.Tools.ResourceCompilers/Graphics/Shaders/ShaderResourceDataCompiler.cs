@@ -53,6 +53,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             using var streamWriter = new BinaryWriter(destinationMemoryStream);
             streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
             streamWriter.Write(version);
+            streamWriter.Write(shaderCompiledData.Length);
             streamWriter.Write(shaderCompiledData);
             streamWriter.Flush();
 

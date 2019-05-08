@@ -22,6 +22,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             // TODO: Find a way to invoke compilation in-memory
             // TODO: Put intermediate files into temp directory
             // TODO: Remove intermediate files
+            // TODO: Process errors
 
             var tempFolder = ".";
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.metal");
@@ -32,7 +33,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var buildProcess = new Process();
             buildProcess.StartInfo.FileName = "xcrun";
-            buildProcess.StartInfo.Arguments = $"-sdk macosx metal -ffast-math -c {inputShaderFile} -o {outputAirFile}";
+            buildProcess.StartInfo.Arguments = $"-sdk macosx metal -ffast-math -gline-tables-only -MO -c {inputShaderFile} -o {outputAirFile}";
 
             buildProcess.Start();
             buildProcess.WaitForExit();

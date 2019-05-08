@@ -23,8 +23,6 @@ namespace CoreEngine.Compiler
 
         public async Task CompileProject(string path, bool isWatchMode, bool rebuildAll)
         {
-            // TODO: Add a watcher functionnality
-
             var project = OpenProject(path);
 
             var inputDirectory = Path.GetDirectoryName(Path.GetFullPath(path));
@@ -44,7 +42,7 @@ namespace CoreEngine.Compiler
             var hashListPath = Path.Combine(inputObjDirectory, "HashList");
             var hashFileList = new HashFileList();
 
-            if (!rebuildAll)
+            if (!rebuildAll || isWatchMode)
             {
                 hashFileList.ReadFile(hashListPath);
             }
@@ -74,6 +72,11 @@ namespace CoreEngine.Compiler
 
                 if (hasFileChanged || !File.Exists(destinationPath))
                 {
+                    if (isWatchMode)
+                    {
+                        this.logger.WriteMessage($"{DateTime.Now.ToString()} - Detected file change for '{sourceFile}'");
+                    }
+                    
                     await CompileSourceFile(sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath, sourceData);
                     compiledFilesCount++;
                 }
@@ -151,6 +154,8 @@ namespace CoreEngine.Compiler
 
         private async Task CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath, ReadOnlyMemory<byte> sourceData)
         {
+            // TODO: Process errors
+            
             this.logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageType.Action);
             await this.resourceCompiler.CompileFileAsync(sourceFile, sourceData, destinationPath);
             this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
