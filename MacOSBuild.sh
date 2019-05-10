@@ -8,6 +8,8 @@ cd $outputDirectory
 
 copyFiles() {
     echo [93mCopy files...[0m
+    cp "../../external/ShaderConductor/MacOS/"* "./"
+    chmod +x "./ShaderConductorCmd"
     # cp "../../src/Host/MacOS/Info.plist" "../"$outputDirectory
     # cp * "../"$outputDirectory"/CoreClr"
     #cp *".dll" "../"$outputDirectory"/Frameworks"

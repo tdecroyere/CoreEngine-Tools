@@ -43,7 +43,8 @@ VertexOutput VertexMain(const VertexInput input)
 ColorPixelOutput PixelMain(const VertexOutput input)
 {
     ColorPixelOutput output = (ColorPixelOutput)0;
-    output.Color = input.Color;
+    //output.Color = input.Color;
+    output.Color = float4(1, 1, 0, 1);
 
     return output;
 }
