@@ -1,111 +1,49 @@
-#include <metal_stdlib>
-#include <simd/simd.h>
-
-using namespace metal;
-
-struct type_CoreEngine_RenderPassConstantBuffer
+cbuffer CoreEngine_RenderPassConstantBuffer : register(b1)
 {
-    float4x4 ViewMatrix;
-    float4x4 ProjectionMatrix;
+    matrix ViewMatrix;
+    matrix ProjectionMatrix;
 };
 
-struct type_CoreEngine_ObjectConstantBuffer
+cbuffer CoreEngine_ObjectConstantBuffer : register(b2)
 {
-    float4x4 WorldMatrix;
+    matrix WorldMatrix;
 };
 
-struct VertexMain_out
+
+struct VertexInput
 {
-    float4 out_var_COLOR [[user(locn0)]];
-    float4 gl_Position [[position]];
+    float4 Position: POSITION;
+    float4 Color: TexCoord0;
 };
 
-struct VertexMain_in
+struct VertexOutput
 {
-    float4 in_var_POSITION [[attribute(0)]];
-    float4 in_var_TexCoord0 [[attribute(1)]];
+    float4 Position: SV_POSITION;
+    float4 Color: COLOR;
 };
 
-vertex VertexMain_out VertexMain(VertexMain_in in [[stage_in]], constant type_CoreEngine_RenderPassConstantBuffer& CoreEngine_RenderPassConstantBuffer [[buffer(1)]], constant type_CoreEngine_ObjectConstantBuffer& CoreEngine_ObjectConstantBuffer [[buffer(2)]])
+struct ColorPixelOutput
 {
-    VertexMain_out out = {};
-    out.gl_Position = ((transpose(CoreEngine_RenderPassConstantBuffer.ProjectionMatrix) * transpose(CoreEngine_RenderPassConstantBuffer.ViewMatrix)) * transpose(CoreEngine_ObjectConstantBuffer.WorldMatrix)) * in.in_var_POSITION;
-    out.out_var_COLOR = in.in_var_TexCoord0;
-    return out;
+	float4 Color: SV_TARGET;
+};
+
+
+VertexOutput VertexMain(const VertexInput input)
+{
+    VertexOutput output = (VertexOutput)0;
+
+    matrix worldViewProjMatrix = mul(WorldMatrix, mul(ViewMatrix, ProjectionMatrix));
+
+    output.Position = mul(input.Position, worldViewProjMatrix);
+    output.Color = input.Color;
+    
+    return output;
 }
 
-
-
-
-
-
-struct PixelMain_out
+ColorPixelOutput PixelMain(const VertexOutput input)
 {
-    float4 out_var_SV_TARGET [[color(0)]];
-};
+    ColorPixelOutput output = (ColorPixelOutput)0;
+    output.Color = input.Color;
 
-struct PixelMain_in
-{
-    float4 in_var_COLOR [[user(locn0)]];
-};
-
-fragment PixelMain_out PixelMain(PixelMain_in in [[stage_in]], float4 gl_FragCoord [[position]])
-{
-    PixelMain_out out = {};
-    out.out_var_SV_TARGET = float4(1, 1, 0, 1);
-    return out;
+    return output;
 }
-
-
-
-
-// #include <metal_stdlib>
-// #include <simd/simd.h>
-
-// using namespace metal;
-
-// struct VertexInput
-// {
-//     float4 Position;
-//     float4 Color;
-// };
-
-// struct VertexOutput
-// {
-//     float4 Position [[position]];
-//     float4 Color;
-// };
-
-// struct CoreEngine_RenderPassConstantBuffer {
-//     float4x4 ViewMatrix;
-//     float4x4 ProjectionMatrix;
-// };
-
-// struct CoreEngine_ObjectConstantBuffer
-// {
-//     float4x4 WorldMatrix;
-// };
-
-// vertex VertexOutput VertexMain(uint vertexID [[vertex_id]], 
-//                                 constant VertexInput* input [[buffer(0)]], 
-//                                 constant CoreEngine_RenderPassConstantBuffer* renderPassParametersPointer [[buffer(1)]],
-//                                 constant CoreEngine_ObjectConstantBuffer* objectParametersPointer [[buffer(2)]])
-// {
-//     VertexOutput output;
-
-//     CoreEngine_RenderPassConstantBuffer renderPassParameters = *renderPassParametersPointer;
-//     CoreEngine_ObjectConstantBuffer objectParameters = *objectParametersPointer;
-    
-//     float4x4 worldViewProjMatrix = objectParameters.WorldMatrix * renderPassParameters.ViewMatrix * renderPassParameters.ProjectionMatrix;
-
-//     output.Position = input[vertexID].Position * worldViewProjMatrix;
-//     output.Color = input[vertexID].Color;
-    
-//     return output;
-// }
-
-// fragment float4 PixelMain(VertexOutput input [[stage_in]])
-// {
-//     return float4(1, 1, 0, 1);
-//     //return input.Color;
-// }

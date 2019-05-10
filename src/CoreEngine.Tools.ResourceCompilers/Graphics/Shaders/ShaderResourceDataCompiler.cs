@@ -36,7 +36,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             }
         }
 
-        public override async Task<byte[]> CompileAsync(ReadOnlyMemory<byte> sourceData)
+        public override async Task<byte[]?> CompileAsync(ReadOnlyMemory<byte> sourceData)
         {
             var version = 1;
 
@@ -48,16 +48,21 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var shaderCompiledData = await metalShaderCompiler.CompileMetalShaderAsync(sourceData);
 
-            var destinationMemoryStream = new MemoryStream();
+            if (shaderCompiledData != null)
+            {
+                var destinationMemoryStream = new MemoryStream();
 
-            using var streamWriter = new BinaryWriter(destinationMemoryStream);
-            streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
-            streamWriter.Write(version);
-            streamWriter.Write(shaderCompiledData.Length);
-            streamWriter.Write(shaderCompiledData);
-            streamWriter.Flush();
+                using var streamWriter = new BinaryWriter(destinationMemoryStream);
+                streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
+                streamWriter.Write(version);
+                streamWriter.Write(shaderCompiledData.Length);
+                streamWriter.Write(shaderCompiledData);
+                streamWriter.Flush();
 
-            return destinationMemoryStream.ToArray();
+                return destinationMemoryStream.ToArray();
+            }
+
+            return null;
         }
     }
 }

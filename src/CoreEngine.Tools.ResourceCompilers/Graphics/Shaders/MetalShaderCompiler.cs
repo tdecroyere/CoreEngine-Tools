@@ -15,14 +15,13 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             this.logger = logger;
         }
 
-        public async Task<byte[]> CompileMetalShaderAsync(ReadOnlyMemory<byte> data)
+        public async Task<byte[]?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data)
         {
             this.logger.WriteMessage("Compiling metal shader with command line tools");
 
             // TODO: Find a way to invoke compilation in-memory
             // TODO: Put intermediate files into temp directory
             // TODO: Remove intermediate files
-            // TODO: Process errors
 
             var tempFolder = ".";
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.metal");
@@ -38,10 +37,20 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             buildProcess.Start();
             buildProcess.WaitForExit();
 
+            if (buildProcess.ExitCode != 0)
+            {
+                return null;
+            }            
+
             buildProcess.StartInfo.Arguments = $"-sdk macosx metallib {outputAirFile} -o {outputMetalLibFile}";
 
             buildProcess.Start();
             buildProcess.WaitForExit();
+
+            if (buildProcess.ExitCode != 0)
+            {
+                return null;
+            } 
 
             var metalShaderData = await File.ReadAllBytesAsync(outputMetalLibFile);
             return metalShaderData;

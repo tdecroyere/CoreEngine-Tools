@@ -32,6 +32,6 @@ namespace CoreEngine.Tools.ResourceCompilers
             private set;
         }
 
-        public abstract Task<byte[]> CompileAsync(ReadOnlyMemory<byte> sourceData);
+        public abstract Task<byte[]?> CompileAsync(ReadOnlyMemory<byte> sourceData);
     }
 }

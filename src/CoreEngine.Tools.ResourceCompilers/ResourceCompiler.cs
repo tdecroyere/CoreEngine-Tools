@@ -36,7 +36,7 @@ namespace CoreEngine.Tools.ResourceCompilers
         }
 
         // TODO: Replace parameters by structs
-        public async Task CompileFileAsync(string inputPath, ReadOnlyMemory<byte> inputData, string output)
+        public async Task<bool> CompileFileAsync(string inputPath, ReadOnlyMemory<byte> inputData, string output)
         {
             var outputDirectory = Path.GetDirectoryName(output);
             var sourceFileExtension = Path.GetExtension(inputPath);
@@ -54,16 +54,20 @@ namespace CoreEngine.Tools.ResourceCompilers
                 throw new ArgumentException($"Destination file extension: {destinationFileExtension} is not supported by the compiler");
             }
 
-            // TODO: Check if file exists
-
             var outputData = await dataCompiler.CompileAsync(inputData);
             
-            if (!Directory.Exists(outputDirectory))
+            if (outputData != null)
             {
-                Directory.CreateDirectory(outputDirectory);
+                if (!Directory.Exists(outputDirectory))
+                {
+                    Directory.CreateDirectory(outputDirectory);
+                }
+
+                await File.WriteAllBytesAsync(output, outputData);
+                return true;
             }
 
-            await File.WriteAllBytesAsync(output, outputData);
+            return false;
         }
 
         private void AddInternalDataCompilers()

@@ -36,7 +36,7 @@ namespace CoreEngine.Tools.ResourceCompilers
             }
         }
 
-        public override Task<byte[]> CompileAsync(ReadOnlyMemory<byte> sourceData)
+        public override Task<byte[]?> CompileAsync(ReadOnlyMemory<byte> sourceData)
         {
             this.Logger.WriteMessage("Test Compiler");
             // TODO: Try to avoid the ToArray call that copy the buffer to the MemoryStream
@@ -49,7 +49,7 @@ namespace CoreEngine.Tools.ResourceCompilers
             streamWriter.Write(inputText.Replace("Source", "Compiled"));
             streamWriter.Flush();
 
-            return Task.FromResult(destinationMemoryStream.ToArray());
+            return Task.FromResult<byte[]?>(destinationMemoryStream.ToArray());
         }
     }
 }

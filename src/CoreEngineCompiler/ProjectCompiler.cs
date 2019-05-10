@@ -77,8 +77,12 @@ namespace CoreEngine.Compiler
                         this.logger.WriteMessage($"{DateTime.Now.ToString()} - Detected file change for '{sourceFile}'");
                     }
                     
-                    await CompileSourceFile(sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath, sourceData);
-                    compiledFilesCount++;
+                    var result = await CompileSourceFile(sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath, sourceData);
+                    
+                    if (result)
+                    {
+                        compiledFilesCount++;
+                    }
                 }
             }
 
@@ -152,13 +156,22 @@ namespace CoreEngine.Compiler
             return destinationPath;
         }
 
-        private async Task CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath, ReadOnlyMemory<byte> sourceData)
+        private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath, ReadOnlyMemory<byte> sourceData)
         {
-            // TODO: Process errors
-            
             this.logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageType.Action);
-            await this.resourceCompiler.CompileFileAsync(sourceFile, sourceData, destinationPath);
-            this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
+            var result = await this.resourceCompiler.CompileFileAsync(sourceFile, sourceData, destinationPath);
+
+            if (result)
+            {
+                this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
+            }
+
+            else
+            {
+                this.logger.WriteMessage($"Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageType.Error);
+            }
+
+            return result;
         }
 
         private void CleanupOutputDirectory(string outputDirectory, List<string> remainingDestinationFiles)
