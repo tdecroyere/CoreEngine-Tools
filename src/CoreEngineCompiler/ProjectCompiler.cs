@@ -39,12 +39,12 @@ namespace CoreEngine.Compiler
                 Directory.CreateDirectory(inputObjDirectory);
             }
 
-            var hashListPath = Path.Combine(inputObjDirectory, "HashList");
-            var hashFileList = new HashFileList();
+            var fileTrackerPath = Path.Combine(inputObjDirectory, "FileTracker");
+            var fileTracker = new FileTracker();
 
             if (!rebuildAll || isWatchMode)
             {
-                hashFileList.ReadFile(hashListPath);
+                fileTracker.ReadFile(fileTrackerPath);
             }
 
             if (!isWatchMode)
@@ -62,8 +62,7 @@ namespace CoreEngine.Compiler
 
             foreach (var sourceFile in sourceFiles)
             {
-                var sourceData = new ReadOnlyMemory<byte>(File.ReadAllBytes(sourceFile));
-                var hasFileChanged = hashFileList.HasFileChanged(sourceFile, sourceData.Span);
+                var hasFileChanged = fileTracker.HasFileChanged(sourceFile);
 
                 var sourceFileAbsoluteDirectory = ConstructSourceFileAbsolutDirectory(inputDirectory, sourceFile);
                 var destinationPath = ConstructDestinationPath(sourceFileAbsoluteDirectory, sourceFile, outputDirectory);
@@ -77,7 +76,7 @@ namespace CoreEngine.Compiler
                         this.logger.WriteMessage($"{DateTime.Now.ToString()} - Detected file change for '{sourceFile}'");
                     }
                     
-                    var result = await CompileSourceFile(sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath, sourceData);
+                    var result = await CompileSourceFile(sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath);
                     
                     if (result)
                     {
@@ -94,7 +93,7 @@ namespace CoreEngine.Compiler
                 this.logger.WriteMessage($"Success: Compiled {compiledFilesCount} file(s) in {stopwatch.Elapsed}.", LogMessageType.Success);
             }
 
-            hashFileList.WriteFile(hashListPath);
+            fileTracker.WriteFile(fileTrackerPath);
             CleanupOutputDirectory(outputDirectory, remainingDestinationFiles);
         }
 
@@ -156,10 +155,10 @@ namespace CoreEngine.Compiler
             return destinationPath;
         }
 
-        private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath, ReadOnlyMemory<byte> sourceData)
+        private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath)
         {
             this.logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageType.Action);
-            var result = await this.resourceCompiler.CompileFileAsync(sourceFile, sourceData, destinationPath);
+            var result = await this.resourceCompiler.CompileFileAsync(sourceFile, destinationPath);
 
             if (result)
             {

@@ -40,8 +40,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
         {
             var version = 1;
 
-            this.Logger.WriteMessage("Shader compiler OK");
-
             // TODO: Add Platform checks, for the moment only compiling metal shaders
 
             var metalShaderCompiler = new MetalShaderCompiler(Logger);

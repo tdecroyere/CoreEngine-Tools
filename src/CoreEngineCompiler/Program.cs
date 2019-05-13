@@ -8,7 +8,7 @@ namespace CoreEngine.Compiler
 {
     class Program
     {
-        private static async Task RunCompilePass(Logger logger, ResourceCompiler resourceCompiler, string input, bool isWatchMode)
+        private static async Task RunCompilePass(Logger logger, ResourceCompiler resourceCompiler, string input, bool isWatchMode, bool rebuildAll)
         {
             if (!isWatchMode)
             {
@@ -18,7 +18,7 @@ namespace CoreEngine.Compiler
             try
             {
                 var projectCompiler = new ProjectCompiler(resourceCompiler, logger);
-                await projectCompiler.CompileProject(input, isWatchMode, true);
+                await projectCompiler.CompileProject(input, isWatchMode, rebuildAll);
             }
 
             catch(Exception e)
@@ -31,8 +31,7 @@ namespace CoreEngine.Compiler
         {
             // TODO: Add verbose parameter
             // TODO: Add help parameter
-            // TODO: Add rebuild parameter
-            // TODO: Add watch parameter
+            // TODO: Add version number
 
             var logger = new Logger();
             var resourceCompiler = new ResourceCompiler(logger);
@@ -44,10 +43,11 @@ namespace CoreEngine.Compiler
             {
                 var input = args[0];
                 var isWatchMode = (args.Length > 1 && args[1] == "--watch");
+                var rebuildAll = (args.Length > 1 && args[1] == "--rebuild");
 
                 if (!isWatchMode)
                 {
-                    await RunCompilePass(logger, resourceCompiler, input, isWatchMode);
+                    await RunCompilePass(logger, resourceCompiler, input, isWatchMode, rebuildAll);
                 }
 
                 else
@@ -56,7 +56,7 @@ namespace CoreEngine.Compiler
 
                     while (true)
                     {
-                        await RunCompilePass(logger, resourceCompiler, input, isWatchMode);
+                        await RunCompilePass(logger, resourceCompiler, input, isWatchMode, rebuildAll);
                         Thread.Sleep(1000);
                     }
                 }

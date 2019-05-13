@@ -10,6 +10,5 @@ namespace CoreEngine.Compiler
         }
         
         public string OutputDirectory { get; set; }
-        public string? TargetPlatform { get; set; }
     }
 }
