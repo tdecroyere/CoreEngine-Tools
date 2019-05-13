@@ -36,7 +36,7 @@ namespace CoreEngine.Tools.ResourceCompilers
         }
 
         // TODO: Replace parameters by structs
-        public async Task<bool> CompileFileAsync(string inputPath, string output)
+        public async Task<bool> CompileFileAsync(string inputPath, string output, CompilerContext context)
         {
             var outputDirectory = Path.GetDirectoryName(output);
             var sourceFileExtension = Path.GetExtension(inputPath);
@@ -58,7 +58,7 @@ namespace CoreEngine.Tools.ResourceCompilers
             {
                 // TODO: Find a way to avoid copy data when using FileStream?
                 var inputData = new ReadOnlyMemory<byte>(await File.ReadAllBytesAsync(inputPath));
-                var outputData = await dataCompiler.CompileAsync(inputData);
+                var outputData = await dataCompiler.CompileAsync(inputData, context);
                 
                 if (outputData != null)
                 {

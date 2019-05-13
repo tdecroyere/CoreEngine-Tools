@@ -15,17 +15,21 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             this.logger = logger;
         }
 
-        public async Task<byte[]?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data)
+        public async Task<ReadOnlyMemory<byte>?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data)
         {
             this.logger.WriteMessage("Compiling metal shader with command line tools");
 
             var transpiledMetalShader = await TranspileShaderToMetalAsync(data);
-            var metalShaderData = await CompileMetalShaderSourceAsync(transpiledMetalShader);
 
-            return metalShaderData;
+            if (transpiledMetalShader != null)
+            {
+                return await CompileMetalShaderSourceAsync(transpiledMetalShader.Value);
+            }
+
+            return null;
         }
 
-        private static async Task<byte[]?> TranspileShaderToMetalAsync(ReadOnlyMemory<byte> data)
+        private static async Task<ReadOnlyMemory<byte>?> TranspileShaderToMetalAsync(ReadOnlyMemory<byte> data)
         {
             // TODO: Add parameters for vertex and pixel main
             // TODO: Use shader conductor lib instead of command line tool
@@ -69,7 +73,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             return outputArray;
         }
 
-        private static async Task<byte[]?> CompileMetalShaderSourceAsync(ReadOnlyMemory<byte> data)
+        private static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderSourceAsync(ReadOnlyMemory<byte> data)
         {
             // TODO: Find a way to invoke compilation in-memory
             // TODO: Put intermediate files into temp directory

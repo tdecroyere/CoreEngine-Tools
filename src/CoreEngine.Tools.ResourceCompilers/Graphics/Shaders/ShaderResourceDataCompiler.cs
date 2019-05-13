@@ -36,14 +36,15 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             }
         }
 
-        public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData)
+        public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             var version = 1;
+
+            this.Logger.WriteMessage($"Shader compiler platform: {context.TargetPlatform}");
 
             // TODO: Add Platform checks, for the moment only compiling metal shaders
 
             var metalShaderCompiler = new MetalShaderCompiler(Logger);
-
             var shaderCompiledData = await metalShaderCompiler.CompileMetalShaderAsync(sourceData);
 
             if (shaderCompiledData != null)
@@ -53,8 +54,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 using var streamWriter = new BinaryWriter(destinationMemoryStream);
                 streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
                 streamWriter.Write(version);
-                streamWriter.Write(shaderCompiledData.Length);
-                streamWriter.Write(shaderCompiledData);
+                streamWriter.Write(shaderCompiledData.Value.Length);
+                streamWriter.Write(shaderCompiledData.Value.ToArray());
                 streamWriter.Flush();
 
                 destinationMemoryStream.Flush();

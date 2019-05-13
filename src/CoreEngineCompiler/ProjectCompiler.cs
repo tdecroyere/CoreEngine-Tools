@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CoreEngine.Tools.Common;
 using CoreEngine.Tools.ResourceCompilers;
@@ -158,7 +159,23 @@ namespace CoreEngine.Compiler
         private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath)
         {
             this.logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageType.Action);
-            var result = await this.resourceCompiler.CompileFileAsync(sourceFile, destinationPath);
+            
+            // TODO: Get the target platform from the command line arguments
+            var targetPlatform = "windows";
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                targetPlatform = "osx";
+            }
+
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                targetPlatform = "linux";
+            }
+
+            var resourceCompilerContext = new CompilerContext(targetPlatform);
+            
+            var result = await this.resourceCompiler.CompileFileAsync(sourceFile, destinationPath, resourceCompilerContext);
 
             if (result)
             {

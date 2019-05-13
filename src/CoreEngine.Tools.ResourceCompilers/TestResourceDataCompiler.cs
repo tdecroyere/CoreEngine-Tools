@@ -36,7 +36,7 @@ namespace CoreEngine.Tools.ResourceCompilers
             }
         }
 
-        public override Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData)
+        public override Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             this.Logger.WriteMessage("Test Compiler");
             // TODO: Try to avoid the ToArray call that copy the buffer to the MemoryStream

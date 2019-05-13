@@ -36,7 +36,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             }
         }
 
-        public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData)
+        public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             var version = 1;
 
