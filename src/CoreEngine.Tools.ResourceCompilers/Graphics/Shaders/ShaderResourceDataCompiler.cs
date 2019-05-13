@@ -36,7 +36,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             }
         }
 
-        public override async Task<byte[]?> CompileAsync(ReadOnlyMemory<byte> sourceData)
+        public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData)
         {
             var version = 1;
 
@@ -57,7 +57,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 streamWriter.Write(shaderCompiledData);
                 streamWriter.Flush();
 
-                return destinationMemoryStream.ToArray();
+                destinationMemoryStream.Flush();
+                return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
             }
 
             return null;

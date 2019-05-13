@@ -56,6 +56,7 @@ namespace CoreEngine.Tools.ResourceCompilers
 
             try
             {
+                // TODO: Find a way to avoid copy data when using FileStream?
                 var inputData = new ReadOnlyMemory<byte>(await File.ReadAllBytesAsync(inputPath));
                 var outputData = await dataCompiler.CompileAsync(inputData);
                 
@@ -66,7 +67,7 @@ namespace CoreEngine.Tools.ResourceCompilers
                         Directory.CreateDirectory(outputDirectory);
                     }
 
-                    await File.WriteAllBytesAsync(output, outputData);
+                    await File.WriteAllBytesAsync(output, outputData.Value.ToArray());
                     return true;
                 }
             }
