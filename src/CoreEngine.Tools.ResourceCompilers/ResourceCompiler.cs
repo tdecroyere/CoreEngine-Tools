@@ -74,7 +74,7 @@ namespace CoreEngine.Tools.ResourceCompilers
 
             catch(Exception e)
             {
-                logger.WriteMessage($"Error: {e.Message}", LogMessageType.Error);
+                logger.WriteMessage($"Error: {e.ToString()}", LogMessageType.Error);
             }
 
             return false;

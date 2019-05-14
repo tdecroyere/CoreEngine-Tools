@@ -26,5 +26,4 @@ dotnet.exe build --nologo -c Debug -v Q -o "." "..\..\src\CoreEngineCompiler"
 :End
     ECHO [92mSuccess: Compilation done.[0m
     popd
-    RD /S /Q build\temp
     @ECHO ON

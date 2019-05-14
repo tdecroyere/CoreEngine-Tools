@@ -173,7 +173,7 @@ namespace CoreEngine.Compiler
                 targetPlatform = "linux";
             }
 
-            var resourceCompilerContext = new CompilerContext(targetPlatform);
+            var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile));
             
             var result = await this.resourceCompiler.CompileFileAsync(sourceFile, destinationPath, resourceCompilerContext);
 

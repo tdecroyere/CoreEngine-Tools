@@ -17,6 +17,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             private set;
         }
 
-        public abstract Task<byte[]?> ReadAsync(ReadOnlyMemory<byte> sourceData);
+        public abstract Task<MeshData?> ReadAsync(ReadOnlyMemory<byte> sourceData);
     }
 }

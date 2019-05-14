@@ -8,7 +8,7 @@
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
-            "args": ["../../TestData/TestProject.ceproj"],
+            "args": ["../../TestData/TestProject.ceproj", "--rebuild"],
             "console": "internalConsole",
             "stopAtEntry": false,
             "osx": {

@@ -46,22 +46,53 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
             MeshDataReader? meshDataReader = null;
 
-            meshDataReader = new ObjMeshDataReader(this.Logger);
-            var meshData = await meshDataReader.ReadAsync(sourceData);
-
-            if (meshData != null)
+            if (Path.GetExtension(context.TargetFilename) == ".obj")
             {
-                var destinationMemoryStream = new MemoryStream();
+                meshDataReader = new ObjMeshDataReader(this.Logger);
+            }
 
-                using var streamWriter = new BinaryWriter(destinationMemoryStream);
-                streamWriter.Write(new char[] { 'M', 'E', 'S', 'H'});
-                streamWriter.Write(version);
-                streamWriter.Write(meshData.Length);
-                streamWriter.Write(meshData);
-                streamWriter.Flush();
+            // TODO: Optimize mesh indices
 
-                destinationMemoryStream.Flush();
-                return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+            if (meshDataReader != null)
+            {
+                var meshData = await meshDataReader.ReadAsync(sourceData);
+
+                if (meshData != null)
+                {
+                    var destinationMemoryStream = new MemoryStream();
+
+                    using var streamWriter = new BinaryWriter(destinationMemoryStream);
+                    streamWriter.Write(new char[] { 'M', 'E', 'S', 'H'});
+                    streamWriter.Write(version);
+                    streamWriter.Write(meshData.MeshSubObjects.Count);
+
+                    foreach (var subObject in meshData.MeshSubObjects)
+                    {
+                        streamWriter.Write(subObject.Vertices.Count);
+                        
+                        foreach (var vertex in subObject.Vertices)
+                        {
+                            streamWriter.Write(vertex.Position.X);
+                            streamWriter.Write(vertex.Position.Y);
+                            streamWriter.Write(vertex.Position.Z);
+                            streamWriter.Write(vertex.Normal.X);
+                            streamWriter.Write(vertex.Normal.Y);
+                            streamWriter.Write(vertex.Normal.Z);
+                        }
+
+                        streamWriter.Write(subObject.Indices.Count);
+
+                        foreach (var index in subObject.Indices)
+                        {
+                            streamWriter.Write(index);
+                        }
+                    }
+
+                    streamWriter.Flush();
+
+                    destinationMemoryStream.Flush();
+                    return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                }
             }
 
             return null;

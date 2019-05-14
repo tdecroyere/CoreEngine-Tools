@@ -44,22 +44,25 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             // TODO: Add Platform checks, for the moment only compiling metal shaders
 
-            var metalShaderCompiler = new MetalShaderCompiler(Logger);
-            var shaderCompiledData = await metalShaderCompiler.CompileMetalShaderAsync(sourceData);
-
-            if (shaderCompiledData != null)
+            if (context.TargetPlatform == "osx")
             {
-                var destinationMemoryStream = new MemoryStream();
+                var metalShaderCompiler = new MetalShaderCompiler(Logger);
+                var shaderCompiledData = await metalShaderCompiler.CompileMetalShaderAsync(sourceData);
 
-                using var streamWriter = new BinaryWriter(destinationMemoryStream);
-                streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
-                streamWriter.Write(version);
-                streamWriter.Write(shaderCompiledData.Value.Length);
-                streamWriter.Write(shaderCompiledData.Value.ToArray());
-                streamWriter.Flush();
+                if (shaderCompiledData != null)
+                {
+                    var destinationMemoryStream = new MemoryStream();
 
-                destinationMemoryStream.Flush();
-                return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                    using var streamWriter = new BinaryWriter(destinationMemoryStream);
+                    streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
+                    streamWriter.Write(version);
+                    streamWriter.Write(shaderCompiledData.Value.Length);
+                    streamWriter.Write(shaderCompiledData.Value.ToArray());
+                    streamWriter.Flush();
+
+                    destinationMemoryStream.Flush();
+                    return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                }
             }
 
             return null;
