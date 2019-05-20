@@ -11,11 +11,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
     public class MeshSubObject
     {
-        public IList<MeshVertex> Vertices { get; } = new List<MeshVertex>();
-        public IList<uint> Indices { get; } = new List<uint>();
+        public List<MeshVertex> Vertices { get; } = new List<MeshVertex>();
+        public List<uint> Indices { get; } = new List<uint>();
     }
 
-    public class MeshVertex
+    public struct MeshVertex
     {
         public Vector3 Position;
         public Vector3 Normal;

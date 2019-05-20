@@ -40,8 +40,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
         {
             var version = 1;
 
-            this.Logger.WriteMessage("Mesh compiler OK");
-
             // TODO: Add extension to the parameters in order to do a factory here base on the file extension
 
             MeshDataReader? meshDataReader = null;

@@ -70,7 +70,7 @@ namespace CoreEngine.Compiler
 
                 remainingDestinationFiles.Remove(destinationPath);
 
-                if (hasFileChanged || !File.Exists(destinationPath))
+                if ((!isWatchMode && (hasFileChanged || !File.Exists(destinationPath))) || (isWatchMode && hasFileChanged))
                 {
                     if (isWatchMode)
                     {
