@@ -12,8 +12,8 @@ cbuffer CoreEngine_ObjectConstantBuffer : register(b2)
 
 struct VertexInput
 {
-    float4 Position: POSITION;
-    float4 Color: TexCoord0;
+    float3 Position: POSITION;
+    float3 Normal: TexCoord0;
 };
 
 struct VertexOutput
@@ -34,8 +34,8 @@ VertexOutput VertexMain(const VertexInput input)
 
     matrix worldViewProjMatrix = mul(WorldMatrix, mul(ViewMatrix, ProjectionMatrix));
 
-    output.Position = mul(input.Position, worldViewProjMatrix);
-    output.Color = input.Color;
+    output.Position = mul(float4(input.Position, 1), worldViewProjMatrix);
+    output.Color = float4(input.Normal, 1);
     
     return output;
 }
@@ -43,8 +43,8 @@ VertexOutput VertexMain(const VertexInput input)
 ColorPixelOutput PixelMain(const VertexOutput input)
 {
     ColorPixelOutput output = (ColorPixelOutput)0;
-    //output.Color = input.Color;
-    output.Color = float4(1, 1, 0, 1);
+    output.Color = input.Color;
+    //output.Color = float4(1, 1, 0, 1);
 
     return output;
 }

@@ -69,6 +69,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     foreach (var subObject in meshData.MeshSubObjects)
                     {
                         streamWriter.Write(subObject.Vertices.Count);
+                        streamWriter.Write(subObject.Indices.Count);
                         
                         foreach (var vertex in subObject.Vertices)
                         {
@@ -79,8 +80,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                             streamWriter.Write(vertex.Normal.Y);
                             streamWriter.Write(vertex.Normal.Z);
                         }
-
-                        streamWriter.Write(subObject.Indices.Count);
 
                         foreach (var index in subObject.Indices)
                         {

@@ -36,13 +36,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var tempFolder = ".";
             var inputShaderFile = Path.Combine(tempFolder, "tempShader_transpile.hlsl");
-            var outputShaderFile = Path.Combine(tempFolder, "tempShader_transpile.metal");
+            var vsOutputShaderFile = Path.Combine(tempFolder, "vs_tempShader_transpile.metal");
+            var psOutputShaderFile = Path.Combine(tempFolder, "ps_tempShader_transpile.metal");
 
             await File.WriteAllBytesAsync(inputShaderFile, data.ToArray());
 
             var buildProcess = new Process();
             buildProcess.StartInfo.FileName = "ShaderConductorCmd";
-            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {outputShaderFile} -S vs -T msl_macos -E VertexMain";
+            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {vsOutputShaderFile} -S vs -T msl_macos -E VertexMain";
 
             buildProcess.Start();
             buildProcess.WaitForExit();
@@ -52,9 +53,9 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 return null;
             }
 
-            var vertexShaderData = await File.ReadAllBytesAsync(outputShaderFile);
+            var vertexShaderData = await File.ReadAllBytesAsync(vsOutputShaderFile);
 
-            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {outputShaderFile} -S ps -T msl_macos -E PixelMain";
+            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {psOutputShaderFile} -S ps -T msl_macos -E PixelMain";
 
             buildProcess.Start();
             buildProcess.WaitForExit();
@@ -64,7 +65,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 return null;
             }
 
-            var pixelShaderData = await File.ReadAllBytesAsync(outputShaderFile);
+            var pixelShaderData = await File.ReadAllBytesAsync(psOutputShaderFile);
 
             var outputArray = new byte[vertexShaderData.Length + pixelShaderData.Length];
             Array.Copy(vertexShaderData, outputArray, vertexShaderData.Length);

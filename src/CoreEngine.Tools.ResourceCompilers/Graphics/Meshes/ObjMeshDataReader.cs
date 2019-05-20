@@ -131,13 +131,13 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                 throw new InvalidDataException("Invalid obj vertex line");
             }
 
-            var vertex1 = ushort.Parse(lineParts[1], CultureInfo.InvariantCulture);
-            var vertex2 = ushort.Parse(lineParts[2], CultureInfo.InvariantCulture);
-            var vertex3 = ushort.Parse(lineParts[3], CultureInfo.InvariantCulture);
+            var vertex1 = uint.Parse(lineParts[1].Split('/')[0], CultureInfo.InvariantCulture);
+            var vertex2 = uint.Parse(lineParts[2].Split('/')[0], CultureInfo.InvariantCulture);
+            var vertex3 = uint.Parse(lineParts[3].Split('/')[0], CultureInfo.InvariantCulture);
 
-            meshSubObject.Indices.Add((ushort)(vertex1 - 1));
-            meshSubObject.Indices.Add((ushort)(vertex2 - 1));
-            meshSubObject.Indices.Add((ushort)(vertex3 - 1));
+            meshSubObject.Indices.Add((uint)(vertex1 - 1));
+            meshSubObject.Indices.Add((uint)(vertex2 - 1));
+            meshSubObject.Indices.Add((uint)(vertex3 - 1));
         }
     }
 }

@@ -12,7 +12,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
     public class MeshSubObject
     {
         public IList<MeshVertex> Vertices { get; } = new List<MeshVertex>();
-        public IList<ushort> Indices { get; } = new List<ushort>();
+        public IList<uint> Indices { get; } = new List<uint>();
     }
 
     public class MeshVertex
