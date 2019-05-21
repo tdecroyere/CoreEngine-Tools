@@ -25,6 +25,9 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
         
         public override Task<MeshData?> ReadAsync(ReadOnlyMemory<byte> sourceData)
         {
+            // TODO: Use Disney osOcean.obj to test performances
+            // FIXME: Disney obj files use Catmull-Clark subdivision surfaces
+
             var result = new MeshData();
 
             var vertexDictionary = new Dictionary<MeshVertex, uint>();
@@ -128,6 +131,15 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
             AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element2);
             AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+
+            if (lineParts.Length == 5)
+            {
+                var element4 = ParceFaceElement(lineParts[4]);
+
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element4);
+            }
         }
 
         private static void AddFaceElement(MeshSubObject meshSubObject, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, FaceElement faceElement)

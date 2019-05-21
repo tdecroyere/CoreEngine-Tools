@@ -22,7 +22,7 @@ namespace CoreEngine.Compiler
             this.logger = logger;
         }
 
-        public async Task CompileProject(string path, bool isWatchMode, bool rebuildAll)
+        public async Task CompileProject(string path, string? searchPattern, bool isWatchMode, bool rebuildAll)
         {
             var project = OpenProject(path);
 
@@ -54,16 +54,21 @@ namespace CoreEngine.Compiler
                 this.logger.WriteMessage($"OutputPath: {outputDirectory}", LogMessageType.Debug);
             }
 
-            var sourceFiles = SearchSupportedSourceFiles(inputDirectory);
+            var sourceFiles = SearchSupportedSourceFiles(inputDirectory, searchPattern);
             var remainingDestinationFiles = new List<string>(Directory.GetFiles(outputDirectory, "*", SearchOption.AllDirectories));
             var compiledFilesCount = 0;
+
+            if (searchPattern != null)
+            {
+                remainingDestinationFiles.Clear();
+            }
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
             foreach (var sourceFile in sourceFiles)
             {
-                var hasFileChanged = fileTracker.HasFileChanged(sourceFile);
+                var hasFileChanged = fileTracker.HasFileChanged(sourceFile) || searchPattern != null;
 
                 var sourceFileAbsoluteDirectory = ConstructSourceFileAbsolutDirectory(inputDirectory, sourceFile);
                 var destinationPath = ConstructDestinationPath(sourceFileAbsoluteDirectory, sourceFile, outputDirectory);
@@ -120,16 +125,25 @@ namespace CoreEngine.Compiler
             return deserializer.Deserialize<Project>(input);
         }
 
-        private string[] SearchSupportedSourceFiles(string inputDirectory)
+        private string[] SearchSupportedSourceFiles(string inputDirectory, string? searchPattern)
         {
             var sourceFileExtensions = this.resourceCompiler.GetSupportedSourceFileExtensions();
             var sourceFiles = new List<string>();
 
-            foreach (var fileExtension in sourceFileExtensions)
+            if (searchPattern == null)
             {
-                var searchPattern = fileExtension.Replace(".", "*.");
-                var sourceFilesForExtension = Directory.GetFiles(inputDirectory, searchPattern, SearchOption.AllDirectories);
+                foreach (var fileExtension in sourceFileExtensions)
+                {
+                    var fileSearchPattern = fileExtension.Replace(".", "*.");
+                    var sourceFilesForExtension = Directory.GetFiles(inputDirectory, fileSearchPattern, SearchOption.AllDirectories);
 
+                    sourceFiles.AddRange(sourceFilesForExtension);
+                }
+            }
+
+            else
+            {
+                var sourceFilesForExtension = Directory.GetFiles(inputDirectory, searchPattern, SearchOption.AllDirectories);
                 sourceFiles.AddRange(sourceFilesForExtension);
             }
 
@@ -175,19 +189,28 @@ namespace CoreEngine.Compiler
 
             var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile));
             
-            var result = await this.resourceCompiler.CompileFileAsync(sourceFile, destinationPath, resourceCompilerContext);
-
-            if (result)
+            try
             {
-                this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
+                var result = await this.resourceCompiler.CompileFileAsync(sourceFile, destinationPath, resourceCompilerContext);
+
+                if (result)
+                {
+                    this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
+                }
+
+                else
+                {
+                    this.logger.WriteMessage($"Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageType.Error);
+                }
+
+                return result;
             }
 
-            else
+            catch
             {
-                this.logger.WriteMessage($"Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageType.Error);
+                this.logger.WriteMessage($"Critical Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageType.Error);
+                return false;
             }
-
-            return result;
         }
 
         private void CleanupOutputDirectory(string outputDirectory, List<string> remainingDestinationFiles)

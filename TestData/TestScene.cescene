@@ -1,0 +1,15 @@
+Entities:
+  - Entity: 'TestEntity1'
+    Components:
+      - Component: 'CoreEngine.TransformComponent'
+        Position: 12
+        Scale: 3
+      - Component: 'CoreEngine.Tests.EcsTest.MeshComponent'
+        MeshResourceId: '/teapot.mesh'
+  - Entity: 'TestEntity2'
+    Components:
+      - Component: 'CoreEngine.TransformComponent'
+        Position: 5
+        Scale: 1
+      - Component: 'CoreEngine.Tests.EcsTest.MeshComponent'
+        MeshResourceId: '/teapot.mesh'
