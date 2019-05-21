@@ -2,14 +2,12 @@ Entities:
   - Entity: 'TestEntity1'
     Components:
       - Component: 'CoreEngine.TransformComponent'
-        Position: 12
-        Scale: 3
+        Position: [12, 1.6, 5]
       - Component: 'CoreEngine.Tests.EcsTest.MeshComponent'
         MeshResourceId: '/teapot.mesh'
   - Entity: 'TestEntity2'
     Components:
       - Component: 'CoreEngine.TransformComponent'
-        Position: 5
-        Scale: 1
+        Position: [12, 1.6, 5]
       - Component: 'CoreEngine.Tests.EcsTest.MeshComponent'
         MeshResourceId: '/teapot.mesh'
