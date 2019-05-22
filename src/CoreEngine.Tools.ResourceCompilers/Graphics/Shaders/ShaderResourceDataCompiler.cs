@@ -56,7 +56,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                     using var streamWriter = new BinaryWriter(destinationMemoryStream);
                     streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
                     streamWriter.Write(version);
-                    streamWriter.Write(shaderCompiledData.Value.Length);
+                    streamWriter.Write(shaderCompiledData.Value.Length); // TODO: Use span overload?
                     streamWriter.Write(shaderCompiledData.Value.ToArray());
                     streamWriter.Flush();
 
