@@ -59,10 +59,22 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
             streamWriter.Write(new char[] { 'S', 'C', 'E', 'N', 'E'});
             streamWriter.Write(version);
 
+            streamWriter.Write(sceneDescription.EntityLayouts.Count);
             streamWriter.Write(sceneDescription.Entities.Count);
+
+            foreach (var entityLayout in sceneDescription.EntityLayouts)
+            {
+                streamWriter.Write(entityLayout.Types.Count);
+
+                foreach (var type in entityLayout.Types)
+                {
+                    streamWriter.Write(type);
+                }
+            }
 
             foreach (var entity in sceneDescription.Entities)
             {
+                streamWriter.Write(entity.EntityLayoutIndex);
                 streamWriter.Write(entity.Components.Count);
 
                 foreach (var component in entity.Components)
@@ -138,17 +150,27 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                 var entityDescription = new EntityDescription(entityName);
                 sceneDescription.Entities.Add(entityDescription);
 
+                var entityLayoutDescription = new EntityLayoutDescription();
+
                 foreach (var componentNode in node.Children.Where(x => ((YamlScalarNode)x.Key).Value == "Components").Select(x => x.Value))
                 {
                     foreach (YamlMappingNode componentNodeElement in ((YamlSequenceNode)componentNode).Children)
                     {
-                        ReadComponent(entityDescription, componentNodeElement.Children.ToArray());
+                        var componentDescription = ReadComponent(entityDescription, componentNodeElement.Children.ToArray());
+                     
+                        if (componentDescription != null)
+                        {
+                            entityDescription.Components.Add(componentDescription);
+                            entityLayoutDescription.Types.Add(componentDescription.ComponentType);
+                        }
                     }
                 }
+
+                entityDescription.EntityLayoutIndex = sceneDescription.AddEntityLayoutDescription(entityLayoutDescription);
             }
         }
 
-        private void ReadComponent(EntityDescription entityDescription, KeyValuePair<YamlNode, YamlNode>[] componentsData)
+        private ComponentDescription? ReadComponent(EntityDescription entityDescription, KeyValuePair<YamlNode, YamlNode>[] componentsData)
         {
             ComponentDescription? componentDescription = null;
 
@@ -160,7 +182,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                 if (nodeKey == "Component")
                 {
                     componentDescription = new ComponentDescription(((YamlScalarNode)node.Value).Value);
-                    entityDescription.Components.Add(componentDescription);
                 }
 
                 else
@@ -207,6 +228,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                     }
                 }
             }
+
+            return componentDescription;
         }
     }
 }

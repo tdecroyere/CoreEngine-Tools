@@ -9,7 +9,15 @@ Entities:
         MeshResourceId: 'resource:/teapot.mesh'
   - Entity: 'TestEntity2'
     Components:
-      - Component: 'CoreEngine.TransformComponent'
-        Position: [12, 1.6, 6]
       - Component: 'CoreEngine.Tests.EcsTest.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
+      - Component: 'CoreEngine.TransformComponent'
+        Position: [12, 1.6, 6]
+  - Entity: 'TestEntity3'
+    Components:
+      - Component: 'CoreEngine.Tests.EcsTest.MeshComponent'
+        MeshResourceId: 'resource:/teapot.mesh'
+      - Component: 'CoreEngine.TransformComponent'
+        Position: [32, 51.6, 6]
+      - Component: 'CoreEngine.ColorComponent'
+        Color: [0.0, 0.5, 1.0, 1.0]

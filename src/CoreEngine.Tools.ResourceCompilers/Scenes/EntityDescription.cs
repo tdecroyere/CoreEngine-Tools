@@ -12,6 +12,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
         }
         
         public string Name { get; }
+        public int EntityLayoutIndex { get; set; }
         public List<ComponentDescription> Components { get; }
     }
 }
