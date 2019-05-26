@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using CoreEngine.Tools.Common;
 
@@ -34,7 +35,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             // TODO: Add parameters for vertex and pixel main
             // TODO: Use shader conductor lib instead of command line tool
 
-            var tempFolder = ".";
+            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var inputShaderFile = Path.Combine(tempFolder, "tempShader_transpile.hlsl");
             var vsOutputShaderFile = Path.Combine(tempFolder, "vs_tempShader_transpile.metal");
             var psOutputShaderFile = Path.Combine(tempFolder, "ps_tempShader_transpile.metal");
@@ -80,7 +81,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             // TODO: Put intermediate files into temp directory
             // TODO: Remove intermediate files
 
-            var tempFolder = ".";
+            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.metal");
             var outputAirFile = Path.Combine(tempFolder, "tempShader.air");
             var outputMetalLibFile = Path.Combine(tempFolder, "tempShader.metallib");

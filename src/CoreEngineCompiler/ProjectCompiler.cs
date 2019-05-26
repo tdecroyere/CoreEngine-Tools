@@ -99,8 +99,9 @@ namespace CoreEngine.Compiler
                 this.logger.WriteMessage($"Success: Compiled {compiledFilesCount} file(s) in {stopwatch.Elapsed}.", LogMessageType.Success);
             }
 
-            fileTracker.WriteFile(fileTrackerPath);
+            // TODO: Remove deleted files from file tracker
             CleanupOutputDirectory(outputDirectory, remainingDestinationFiles);
+            fileTracker.WriteFile(fileTrackerPath);
         }
 
         private Project OpenProject(string path)

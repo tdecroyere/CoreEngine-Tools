@@ -33,6 +33,14 @@ echo [93mCompiling CoreEngine Compiler...[0m
 
 dotnet build --nologo -c Debug -v Q -o "." "..\..\src\CoreEngineCompiler"
 
+currentDir=$(
+  cd $(dirname "$0")
+  pwd
+)
+
+sudo rm /usr/local/bin/CoreEngineCompiler
+sudo ln -s $currentDir/CoreEngineCompiler /usr/local/bin/CoreEngineCompiler
+
 if [ $? -eq 0 ]; then
     copyFiles
 
