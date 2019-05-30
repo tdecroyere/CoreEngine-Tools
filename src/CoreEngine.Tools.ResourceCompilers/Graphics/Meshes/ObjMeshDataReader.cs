@@ -18,6 +18,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
     public class ObjMeshDataReader : MeshDataReader
     {
+        private bool invertHandedness = true;
+
         public ObjMeshDataReader(Logger logger) : base(logger)
         {
 
@@ -60,6 +62,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                         this.Logger.WriteMessage($"Reading sub-object: {(lineParts.Length > 1 ? lineParts[1] : "no-name")}");
                         currentSubObject = new MeshSubObject();
+                        vertexDictionary.Clear();
                     }
 
                     if (lineParts[0] == "v")
@@ -93,7 +96,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             return Task.FromResult<MeshData?>(result);
         }
 
-        private static void ParseVectorElement(List<Vector3> vectorList, ReadOnlySpan<char> line)
+        private void ParseVectorElement(List<Vector3> vectorList, ReadOnlySpan<char> line)
         {
             // TODO: Wait for the Span<char> split method that is currenctly in dev
 
@@ -109,10 +112,15 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             var y = float.Parse(lineParts[2], CultureInfo.InvariantCulture);
             var z = float.Parse(lineParts[3], CultureInfo.InvariantCulture);
 
+            if (this.invertHandedness)
+            {
+                z = -z;
+            }
+
             vectorList.Add(new Vector3(x, y , z));
         }
 
-        private static void ParseFace(MeshSubObject meshSubObject, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, ReadOnlySpan<char> line)
+        private void ParseFace(MeshSubObject meshSubObject, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, ReadOnlySpan<char> line)
         {
             // TODO: Wait for the Span<char> split method that is currenctly in dev
 
@@ -128,17 +136,37 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             var element2 = ParceFaceElement(lineParts[2]);
             var element3 = ParceFaceElement(lineParts[3]);
 
-            AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
-            AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element2);
-            AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+            if (!this.invertHandedness)
+            {
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element2);
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+            }
+
+            else 
+            {
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element2);
+            }
 
             if (lineParts.Length == 5)
             {
                 var element4 = ParceFaceElement(lineParts[4]);
 
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element4);
+                if (!this.invertHandedness)
+                {
+                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
+                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element4);
+                }
+
+                else
+                {
+                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
+                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element4);
+                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+                }
             }
         }
 
