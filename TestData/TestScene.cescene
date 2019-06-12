@@ -17,8 +17,7 @@ Entities:
       - Component: 'CoreEngine.Graphics.MeshComponent'
         MeshResourceId: 'resource:/sponza.mesh'
       - Component: 'CoreEngine.TransformComponent'
-        Position: [0, -100.0, 0]
-        RotationY: -80
+      - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
   - Entity: 'MainCamera'
     Components:
       - Component: 'CoreEngine.Graphics.CameraComponent'
