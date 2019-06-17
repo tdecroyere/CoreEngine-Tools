@@ -2,26 +2,20 @@ Entities:
   - Entity: 'TestEntity1'
     Components:
       - Component: 'CoreEngine.TransformComponent'
-        Position: [0, 1.6, 5]
+        Position: [0, 100, 0]
+        RotationY: 90
       - Component: 'CoreEngine.Graphics.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
-  - Entity: 'TestEntity3'
-    Components:
-      - Component: 'CoreEngine.Graphics.MeshComponent'
-        MeshResourceId: 'resource:/isHibiscus.mesh'
-      - Component: 'CoreEngine.TransformComponent'
-        Position: [300, -90, 800]
-        RotationY: -225
   - Entity: 'TestEntity2'
     Components:
       - Component: 'CoreEngine.Graphics.MeshComponent'
         MeshResourceId: 'resource:/sponza.mesh'
       - Component: 'CoreEngine.TransformComponent'
-      - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
   - Entity: 'MainCamera'
     Components:
       - Component: 'CoreEngine.Graphics.CameraComponent'
       - Component: 'CoreEngine.TransformComponent'
-        Position: [0, 0, -50]
+        Position: [-100, 100, 0]
+        RotationY: 90
       - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
         MovementAcceleration: 30000

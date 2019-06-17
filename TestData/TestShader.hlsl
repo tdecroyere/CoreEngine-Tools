@@ -35,7 +35,7 @@ VertexOutput VertexMain(const VertexInput input)
     matrix worldViewProjMatrix = mul(WorldMatrix, mul(ViewMatrix, ProjectionMatrix));
 
     output.Position = mul(float4(input.Position, 1), worldViewProjMatrix);
-    output.Color = float4(input.Normal, 1);
+    output.Color = normalize(mul(float4(input.Normal, 0), WorldMatrix));
     
     return output;
 }

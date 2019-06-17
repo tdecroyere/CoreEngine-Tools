@@ -41,28 +41,33 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             var version = 1;
 
             this.Logger.WriteMessage($"Shader compiler platform: {context.TargetPlatform}");
-
-            // TODO: Add Platform checks, for the moment only compiling metal shaders
+            ReadOnlyMemory<byte>? shaderCompiledData = null;
 
             if (context.TargetPlatform == "osx")
             {
                 var metalShaderCompiler = new MetalShaderCompiler(Logger);
-                var shaderCompiledData = await metalShaderCompiler.CompileMetalShaderAsync(sourceData);
+                shaderCompiledData = await metalShaderCompiler.CompileMetalShaderAsync(sourceData);
+            }
 
-                if (shaderCompiledData != null)
-                {
-                    var destinationMemoryStream = new MemoryStream();
+            else if (context.TargetPlatform == "windows")
+            {
+                var directxShaderCompiler = new DirectXShaderCompiler(Logger);
+                shaderCompiledData = await directxShaderCompiler.CompileDirectXShaderAsync(sourceData);
+            }
+            
+            if (shaderCompiledData != null)
+            {
+                var destinationMemoryStream = new MemoryStream();
 
-                    using var streamWriter = new BinaryWriter(destinationMemoryStream);
-                    streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
-                    streamWriter.Write(version);
-                    streamWriter.Write(shaderCompiledData.Value.Length); // TODO: Use span overload?
-                    streamWriter.Write(shaderCompiledData.Value.ToArray());
-                    streamWriter.Flush();
+                using var streamWriter = new BinaryWriter(destinationMemoryStream);
+                streamWriter.Write(new char[] { 'S', 'H', 'A', 'D', 'E', 'R'});
+                streamWriter.Write(version);
+                streamWriter.Write(shaderCompiledData.Value.Length); // TODO: Use span overload?
+                streamWriter.Write(shaderCompiledData.Value.ToArray());
+                streamWriter.Flush();
 
-                    destinationMemoryStream.Flush();
-                    return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
-                }
+                destinationMemoryStream.Flush();
+                return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
             }
 
             return null;

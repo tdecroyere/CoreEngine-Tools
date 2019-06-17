@@ -52,16 +52,21 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                 {
                     if (lineParts[0] == "g")
                     {
-                        if (currentSubObject != null && currentSubObject.Indices.Count > 0)
+                        if (currentSubObject != null)
                         {
-                            this.Logger.WriteMessage($"Readed vertices: {currentSubObject.Vertices.Count}");
-                            this.Logger.WriteMessage($"Readed Indices: {currentSubObject.Indices.Count}");
+                            currentSubObject.IndexCount = (uint)result.Indices.Count - currentSubObject.StartIndex;
+                            
+                            if (currentSubObject.IndexCount > 0)
+                            {
+                                this.Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
 
-                            result.MeshSubObjects.Add(currentSubObject);
+                                result.MeshSubObjects.Add(currentSubObject);
+                            }
                         }
 
                         this.Logger.WriteMessage($"Reading sub-object: {(lineParts.Length > 1 ? lineParts[1] : "no-name")}");
                         currentSubObject = new MeshSubObject();
+                        currentSubObject.StartIndex = (uint)result.Indices.Count;
                         vertexDictionary.Clear();
                     }
 
@@ -77,20 +82,20 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                     else if (lineParts[0] == "f")
                     {
-                        ParseFace(currentSubObject!, vertexDictionary, vertexList, vertexNormalList, line.AsSpan());
+                        ParseFace(result, vertexDictionary, vertexList, vertexNormalList, line.AsSpan());
                     }
                 }
             }
 
-            if (currentSubObject != null && currentSubObject.Indices.Count > 0)
+            if (currentSubObject != null)
             {
-                this.Logger.WriteMessage($"Readed vertices: {currentSubObject.Vertices.Count}");
-                this.Logger.WriteMessage($"Readed Indices: {currentSubObject.Indices.Count}");
+                currentSubObject.IndexCount = (uint)result.Indices.Count - currentSubObject.StartIndex;
 
-                result.MeshSubObjects.Add(currentSubObject);
-
-                vertexList.Clear();
-                vertexNormalList.Clear();
+                if (currentSubObject.IndexCount > 0)
+                {
+                    this.Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
+                    result.MeshSubObjects.Add(currentSubObject);
+                }
             }
 
             return Task.FromResult<MeshData?>(result);
@@ -120,7 +125,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             vectorList.Add(new Vector3(x, y , z));
         }
 
-        private void ParseFace(MeshSubObject meshSubObject, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, ReadOnlySpan<char> line)
+        private void ParseFace(MeshData meshData, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, ReadOnlySpan<char> line)
         {
             // TODO: Wait for the Span<char> split method that is currenctly in dev
 
@@ -138,16 +143,16 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
             if (!this.invertHandedness)
             {
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element2);
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element2);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
             }
 
             else 
             {
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
-                AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element2);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element2);
             }
 
             if (lineParts.Length == 5)
@@ -156,35 +161,35 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                 if (!this.invertHandedness)
                 {
-                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
-                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
-                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element4);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element4);
                 }
 
                 else
                 {
-                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element1);
-                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element4);
-                    AddFaceElement(meshSubObject, vertexDictionary, vertexList, vertexNormalList, element3);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element4);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
                 }
             }
         }
 
-        private static void AddFaceElement(MeshSubObject meshSubObject, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, FaceElement faceElement)
+        private static void AddFaceElement(MeshData meshData, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, FaceElement faceElement)
         {
             var vertex = ConstructVertex(vertexList, vertexNormalList, faceElement);
 
             if (!vertexDictionary.ContainsKey(vertex))
             {
-                meshSubObject.Indices.Add((uint)meshSubObject.Vertices.Count);
-                vertexDictionary.Add(vertex, (uint)meshSubObject.Vertices.Count);
-                meshSubObject.Vertices.Add(vertex);
+                meshData.Indices.Add((uint)meshData.Vertices.Count);
+                vertexDictionary.Add(vertex, (uint)meshData.Vertices.Count);
+                meshData.Vertices.Add(vertex);
             }
 
             else
             {
                 var vertexIndex = vertexDictionary[vertex];
-                meshSubObject.Indices.Add((uint)vertexIndex);
+                meshData.Indices.Add((uint)vertexIndex);
             }
         }
 

@@ -62,27 +62,34 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     using var streamWriter = new BinaryWriter(destinationMemoryStream);
                     streamWriter.Write(new char[] { 'M', 'E', 'S', 'H'});
                     streamWriter.Write(version);
+
+                    streamWriter.Write(meshData.Vertices.Count);
+                    streamWriter.Write(meshData.Indices.Count);
+                    
+                    foreach (var vertex in meshData.Vertices)
+                    {
+                        streamWriter.Write(vertex.Position.X);
+                        streamWriter.Write(vertex.Position.Y);
+                        streamWriter.Write(vertex.Position.Z);
+                        streamWriter.Write(vertex.Normal.X);
+                        streamWriter.Write(vertex.Normal.Y);
+                        streamWriter.Write(vertex.Normal.Z);
+                    }
+
+                    foreach (var index in meshData.Indices)
+                    {
+                        streamWriter.Write(index);
+                    }
+
                     streamWriter.Write(meshData.MeshSubObjects.Count);
 
                     foreach (var subObject in meshData.MeshSubObjects)
                     {
-                        streamWriter.Write(subObject.Vertices.Count);
-                        streamWriter.Write(subObject.Indices.Count);
+                        // TODO: Replace that real material path
+                        streamWriter.Write("/Materials/TestMaterial.material");
                         
-                        foreach (var vertex in subObject.Vertices)
-                        {
-                            streamWriter.Write(vertex.Position.X);
-                            streamWriter.Write(vertex.Position.Y);
-                            streamWriter.Write(vertex.Position.Z);
-                            streamWriter.Write(vertex.Normal.X);
-                            streamWriter.Write(vertex.Normal.Y);
-                            streamWriter.Write(vertex.Normal.Z);
-                        }
-
-                        foreach (var index in subObject.Indices)
-                        {
-                            streamWriter.Write(index);
-                        }
+                        streamWriter.Write(subObject.StartIndex);
+                        streamWriter.Write(subObject.IndexCount);
                     }
 
                     streamWriter.Flush();
