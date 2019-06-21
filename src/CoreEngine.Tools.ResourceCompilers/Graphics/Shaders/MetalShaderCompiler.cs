@@ -44,7 +44,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var buildProcess = new Process();
             buildProcess.StartInfo.FileName = "ShaderConductorCmd";
-            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {vsOutputShaderFile} -S vs -T msl_macos -E VertexMain";
+            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {vsOutputShaderFile} -S vs -T msl_macos -V 20200 -E VertexMain";
 
             buildProcess.Start();
             buildProcess.WaitForExit();
@@ -56,7 +56,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var vertexShaderData = await File.ReadAllBytesAsync(vsOutputShaderFile);
 
-            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {psOutputShaderFile} -S ps -T msl_macos -E PixelMain";
+            buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {psOutputShaderFile} -S ps -T msl_macos -V 20200 -E PixelMain";
 
             buildProcess.Start();
             buildProcess.WaitForExit();

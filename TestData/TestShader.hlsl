@@ -19,15 +19,14 @@ struct VertexInput
 struct VertexOutput
 {
     float4 Position: SV_POSITION;
-    float4 Color: COLOR;
+    float4 Color: TexCoord0;
 };
  
 struct ColorPixelOutput
 {
 	float4 Color: SV_TARGET;
 };
-
-
+ 
 VertexOutput VertexMain(const VertexInput input)
 {
     VertexOutput output = (VertexOutput)0;
@@ -43,7 +42,7 @@ VertexOutput VertexMain(const VertexInput input)
 ColorPixelOutput PixelMain(const VertexOutput input)
 {
     ColorPixelOutput output = (ColorPixelOutput)0;
-    output.Color = input.Color;
+    output.Color = input.Color * 0.5 + 0.5;
     //output.Color = float4(1, 1, 0, 1);
 
     return output;
