@@ -1,8 +1,15 @@
 Entities:
-  - Entity: 'TestEntity1'
+  - Entity: 'Teapot1'
     Components:
       - Component: 'CoreEngine.TransformComponent'
         Position: [0, 100, 0]
+        RotationY: 90
+      - Component: 'CoreEngine.Graphics.MeshComponent'
+        MeshResourceId: 'resource:/teapot.mesh'
+  - Entity: 'Teapot2'
+    Components:
+      - Component: 'CoreEngine.TransformComponent'
+        Position: [20, 100, 0]
         RotationY: 90
       - Component: 'CoreEngine.Graphics.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
