@@ -15,9 +15,14 @@ struct ColorPixelOutput
 	float4 Color: SV_TARGET;
 };
 
-struct VertexShaderParameters
+struct ObjectProperties
 {
     matrix WorldMatrix;
+};
+
+struct VertexShaderParameters
+{
+    int objectPropertyIndex;
 };
 
 struct CoreEngine_RenderPassParameters
@@ -27,13 +32,16 @@ struct CoreEngine_RenderPassParameters
 };
 
 ConstantBuffer<CoreEngine_RenderPassParameters> renderPassParameters : register(b0, space1);
-StructuredBuffer<VertexShaderParameters> vertexShaderParameters : register(t1, space1);
+StructuredBuffer<ObjectProperties> objectProperties : register(t1, space1);
+StructuredBuffer<VertexShaderParameters> vertexShaderParameters : register(t2, space1);
 
 VertexOutput VertexMain(const VertexInput input, uint instanceId: SV_InstanceID) 
 {
     VertexOutput output = (VertexOutput)0; 
 
-    matrix worldMatrix = vertexShaderParameters[instanceId].WorldMatrix;
+    int objectPropertyIndex = vertexShaderParameters[instanceId].objectPropertyIndex;
+
+    matrix worldMatrix = objectProperties[objectPropertyIndex].WorldMatrix;
     matrix worldViewProjMatrix = mul(worldMatrix, mul(renderPassParameters.ViewMatrix, renderPassParameters.ProjectionMatrix));
 
     output.Position = mul(float4(input.Position, 1), worldViewProjMatrix);
