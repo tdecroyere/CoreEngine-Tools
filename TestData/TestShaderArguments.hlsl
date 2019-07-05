@@ -1,3 +1,10 @@
+#define RootSignatureDef "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT), " \
+              "CBV(b0, space = 1), " \
+              "SRV(t1, space = 1), " \
+              "SRV(t2, space = 1)"
+
+
+                             
 struct VertexInput
 {
     float3 Position: POSITION;
@@ -29,7 +36,7 @@ struct CoreEngine_RenderPassParameters
 {
     matrix ViewMatrix;
     matrix ProjectionMatrix;
-};
+}; 
 
 ConstantBuffer<CoreEngine_RenderPassParameters> renderPassParameters : register(b0, space1);
 StructuredBuffer<ObjectProperties> objectProperties : register(t1, space1);

@@ -20,6 +20,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
         public async Task<ReadOnlyMemory<byte>?> CompileDirectXShaderAsync(ReadOnlyMemory<byte> data)
         {
+            var useDxil = false;
+
             this.logger.WriteMessage("Compiling DirectX shader with command line tools");
 
             string? windowsSdkToolPath = null;
@@ -48,12 +50,23 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.hlsl");
             var vsOutputShaderFile = Path.Combine(tempFolder, "vs_tempShader.cso");
             var psOutputShaderFile = Path.Combine(tempFolder, "ps_tempShader.cso");
+            var rsOutputShaderFile = Path.Combine(tempFolder, "rs_tempShader.cso");
 
             await File.WriteAllBytesAsync(inputShaderFile, data.ToArray());
 
             var buildProcess = new Process();
-            buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}dxc.exe";
-            buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T vs_6_0 -E VertexMain -Fo {vsOutputShaderFile}";
+
+            if (useDxil)
+            {
+                buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}dxc.exe";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T vs_6_0 -E VertexMain -Fo {vsOutputShaderFile}";
+            }
+
+            else
+            {
+                buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}fxc.exe";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T vs_5_1 /E VertexMain /Fo {vsOutputShaderFile}";
+            }
 
             buildProcess.Start();
             buildProcess.WaitForExit();
@@ -65,7 +78,15 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var vertexShaderData = await File.ReadAllBytesAsync(vsOutputShaderFile);
 
-            buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T ps_6_0 -E PixelMain -Fo {psOutputShaderFile}";
+            if (useDxil)
+            {
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T ps_6_0 -E PixelMain -Fo {psOutputShaderFile}";
+            }
+
+            else
+            {
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T ps_5_1 /E PixelMain /Fo {psOutputShaderFile}";
+            }
 
             buildProcess.Start();
             buildProcess.WaitForExit();
@@ -77,12 +98,34 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var pixelShaderData = await File.ReadAllBytesAsync(psOutputShaderFile);
 
+            if (useDxil)
+            {
+                //buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T ps_6_0 -E PixelMain -Fo {psOutputShaderFile}";
+            }
+
+            else
+            {
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T rootsig_1_1 /E RootSignatureDef /Fo {rsOutputShaderFile}";
+            }
+
+            buildProcess.Start();
+            buildProcess.WaitForExit();
+
+            if (buildProcess.ExitCode != 0)
+            {
+                return null;
+            }
+
+            var rootSignatureData = await File.ReadAllBytesAsync(rsOutputShaderFile);
+
             var destinationMemoryStream = new MemoryStream();
             using var streamWriter = new BinaryWriter(destinationMemoryStream);
             streamWriter.Write(vertexShaderData.Length);
             streamWriter.Write(vertexShaderData);
             streamWriter.Write(pixelShaderData.Length); // TODO: Use span overload?
             streamWriter.Write(pixelShaderData);
+            streamWriter.Write(rootSignatureData.Length); // TODO: Use span overload?
+            streamWriter.Write(rootSignatureData);
             streamWriter.Flush();
 
             destinationMemoryStream.Flush();
