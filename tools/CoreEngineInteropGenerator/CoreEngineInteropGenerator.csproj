@@ -9,12 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CoreEngine.Tools.ResourceCompilers\CoreEngine.Tools.ResourceCompilers.csproj" />
-    <ProjectReference Include="..\CoreEngine.Tools.Common\CoreEngine.Tools.Common.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="YamlDotNet" Version="6.0.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.9.7" />
   </ItemGroup>
 

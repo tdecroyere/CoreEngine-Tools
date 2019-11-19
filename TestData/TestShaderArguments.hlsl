@@ -29,7 +29,7 @@ struct ObjectProperties
 
 struct VertexShaderParameters
 {
-    int objectPropertyIndex;
+    uint objectPropertyIndex;
 };
 
 struct CoreEngine_RenderPassParameters
