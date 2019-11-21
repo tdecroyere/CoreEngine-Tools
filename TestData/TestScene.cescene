@@ -1,23 +1,27 @@
 Entities:
+  - Entity: 'Scene'
+    Components:
+      - Component: 'CoreEngine.Components.SceneComponent'
+        ActiveCamera: 'TopCamera'
   - Entity: 'Teapot1'
     Components:
-      - Component: 'CoreEngine.TransformComponent'
+      - Component: 'CoreEngine.Components.TransformComponent'
         Position: [0, 100, 0]
         RotationY: 90
-      - Component: 'CoreEngine.Graphics.MeshComponent'
+      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
   - Entity: 'Teapot2'
     Components:
-      - Component: 'CoreEngine.TransformComponent'
+      - Component: 'CoreEngine.Components.TransformComponent'
         Position: [50, 100, 0]
         RotationY: 45
-      - Component: 'CoreEngine.Graphics.MeshComponent'
+      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
   - Entity: 'TestEntity2'
     Components:
-      - Component: 'CoreEngine.Graphics.MeshComponent'
+      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/sponza.mesh'
-      - Component: 'CoreEngine.TransformComponent'
+      - Component: 'CoreEngine.Components.TransformComponent'
   # - Entity: 'Maison'
   #   Components:
   #     - Component: 'CoreEngine.Graphics.MeshComponent'
@@ -26,9 +30,19 @@ Entities:
   #       Scale: [100, 100, 100]
   - Entity: 'MainCamera'
     Components:
-      - Component: 'CoreEngine.Graphics.CameraComponent'
-      - Component: 'CoreEngine.TransformComponent'
+      - Component: 'CoreEngine.Graphics.Components.CameraComponent'
+        IsActive: true
+      - Component: 'CoreEngine.Components.TransformComponent'
         Position: [-100, 100, 0]
         RotationY: 90
+      - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
+        MovementAcceleration: 30000
+  - Entity: 'TopCamera'
+    Components:
+      - Component: 'CoreEngine.Graphics.Components.CameraComponent'
+      - Component: 'CoreEngine.Components.TransformComponent'
+        Position: [-100, 1000, 0]
+        RotationY: 90
+        RotationX: 90
       - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
         MovementAcceleration: 30000

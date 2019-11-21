@@ -3,7 +3,7 @@
               "SRV(t1, space = 1), " \
               "SRV(t2, space = 1)"
 
-
+//#include "TestSurfaceShader.hlsl"
                              
 struct VertexInput
 {
@@ -60,6 +60,8 @@ VertexOutput VertexMain(const VertexInput input, uint instanceId: SV_InstanceID)
 ColorPixelOutput PixelMain(const VertexOutput input)
 {
     ColorPixelOutput output = (ColorPixelOutput)0;
+ 
+    //output.Color = SurfaceShader(input.Color);
     output.Color = input.Color * 0.5 + 0.5;
     //output.Color = float4(1, 1, 0, 1);
 

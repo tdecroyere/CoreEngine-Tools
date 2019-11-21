@@ -92,6 +92,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                             streamWriter.Write((string)componentValue.Value);
                         }
 
+                        else if (componentValue.Value.GetType() == typeof(bool))
+                        {
+                            streamWriter.Write((bool)componentValue.Value);
+                        }
+
                         else if (componentValue.Value.GetType() == typeof(float))
                         {
                             streamWriter.Write((float)componentValue.Value);
@@ -194,11 +199,24 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
 
                         if (scalarNode.Style == ScalarStyle.Plain)
                         {
-                            var value = float.Parse(scalarNode.Value, CultureInfo.InvariantCulture);
-
-                            if (componentDescription != null)
+                            if (scalarNode.Value == "true" || scalarNode.Value == "false")
                             {
-                                componentDescription.ComponentValues.Add(nodeKey, value);
+                                var value = bool.Parse(scalarNode.Value);
+
+                                if (componentDescription != null)
+                                {
+                                    componentDescription.ComponentValues.Add(nodeKey, value);
+                                }
+                            }
+
+                            else
+                            {
+                                var value = float.Parse(scalarNode.Value, CultureInfo.InvariantCulture);
+
+                                if (componentDescription != null)
+                                {
+                                    componentDescription.ComponentValues.Add(nodeKey, value);
+                                }
                             }
                         }
 
