@@ -2,7 +2,7 @@ Entities:
   - Entity: 'Scene'
     Components:
       - Component: 'CoreEngine.Components.SceneComponent'
-        ActiveCamera: 'TopCamera'
+        ActiveCamera: 'MainCamera'
   - Entity: 'Teapot1'
     Components:
       - Component: 'CoreEngine.Components.TransformComponent'

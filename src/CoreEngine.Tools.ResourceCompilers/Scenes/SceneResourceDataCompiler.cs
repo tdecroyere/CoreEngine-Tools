@@ -74,6 +74,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
 
             foreach (var entity in sceneDescription.Entities)
             {
+                streamWriter.Write(entity.Name);
                 streamWriter.Write(entity.EntityLayoutIndex);
                 streamWriter.Write(entity.Components.Count);
 
