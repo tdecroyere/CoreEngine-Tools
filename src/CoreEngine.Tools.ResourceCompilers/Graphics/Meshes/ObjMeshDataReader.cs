@@ -20,11 +20,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
     {
         private bool invertHandedness = true;
 
-        public ObjMeshDataReader(Logger logger) : base(logger)
-        {
-
-        }
-        
         public override Task<MeshData?> ReadAsync(ReadOnlyMemory<byte> sourceData)
         {
             // TODO: Use Disney osOcean.obj to test performances
@@ -43,7 +38,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             
             while (!reader.EndOfStream)
             {
-                var line = reader.ReadLine();
+                var line = reader.ReadLine()!;
 
                 // TODO: Wait for the Span<char> split method that is currenctly in dev
                 var lineParts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -58,13 +53,13 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                             
                             if (currentSubObject.IndexCount > 0)
                             {
-                                this.Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
+                                Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
 
                                 result.MeshSubObjects.Add(currentSubObject);
                             }
                         }
 
-                        this.Logger.WriteMessage($"Reading sub-object: {(lineParts.Length > 1 ? lineParts[1] : "no-name")}");
+                        Logger.WriteMessage($"Reading sub-object: {(lineParts.Length > 1 ? lineParts[1] : "no-name")}");
                         currentSubObject = new MeshSubObject();
                         currentSubObject.StartIndex = (uint)result.Indices.Count;
                         vertexDictionary.Clear();
@@ -93,7 +88,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                 if (currentSubObject.IndexCount > 0)
                 {
-                    this.Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
+                    Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
                     result.MeshSubObjects.Add(currentSubObject);
                 }
             }

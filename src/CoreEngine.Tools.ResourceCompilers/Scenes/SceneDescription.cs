@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace CoreEngine.Tools.ResourceCompilers.Scenes
 {
@@ -10,6 +11,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
 
         public int AddEntityLayoutDescription(EntityLayoutDescription entityLayout)
         {
+            if (entityLayout == null)
+            {
+                throw new ArgumentNullException(nameof(entityLayout));
+            }
+
             var index = -1;
 
             var result = 0;

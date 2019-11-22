@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using CoreEngine.Tools.Common;
@@ -7,11 +8,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 {
     public class MeshResourceDataCompiler : ResourceDataCompiler
     {
-        public MeshResourceDataCompiler(Logger logger) : base(logger)
-        {
-
-        }
-        
         public override string Name
         {
             get
@@ -20,7 +16,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             }
         }
 
-        public override string[] SupportedSourceExtensions
+        public override IList<string> SupportedSourceExtensions
         {
             get
             {
@@ -38,6 +34,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
         public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
             var version = 1;
 
             // TODO: Add extension to the parameters in order to do a factory here base on the file extension
@@ -46,7 +47,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
             if (Path.GetExtension(context.TargetFilename) == ".obj")
             {
-                meshDataReader = new ObjMeshDataReader(this.Logger);
+                meshDataReader = new ObjMeshDataReader();
             }
 
             // TODO: Optimize mesh indices

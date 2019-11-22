@@ -15,7 +15,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
 {
     public class SceneResourceDataCompiler : ResourceDataCompiler
     {
-        public SceneResourceDataCompiler(Logger logger) : base(logger)
+        public SceneResourceDataCompiler()
         {
 
         }
@@ -28,7 +28,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
             }
         }
 
-        public override string[] SupportedSourceExtensions
+        public override IList<string> SupportedSourceExtensions
         {
             get
             {
@@ -46,12 +46,17 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
 
         public override Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
             var version = 1;
 
-            this.Logger.WriteMessage("Scene compiler", LogMessageType.Debug);
+            Logger.WriteMessage("Scene compiler", LogMessageTypes.Debug);
 
             var sceneDescription = ParseYamlFile(sourceData);
-            this.Logger.WriteMessage($"Scene Entity Count: {sceneDescription.Entities.Count}", LogMessageType.Debug);
+            Logger.WriteMessage($"Scene Entity Count: {sceneDescription.Entities.Count}", LogMessageTypes.Debug);
 
             var destinationMemoryStream = new MemoryStream();
 
@@ -128,7 +133,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
         private SceneDescription ParseYamlFile(ReadOnlyMemory<byte> sourceData)
         {
             var sceneDescription = new SceneDescription();
-            var reader = new StreamReader(new MemoryStream(sourceData.ToArray()));
+            using var reader = new StreamReader(new MemoryStream(sourceData.ToArray()));
             var yaml = new YamlStream();
             yaml.Load(reader);
 
@@ -145,13 +150,13 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
             return sceneDescription;
         }
 
-        private void ReadEntities(SceneDescription sceneDescription, YamlSequenceNode entities)
+        private static void ReadEntities(SceneDescription sceneDescription, YamlSequenceNode entities)
         {
             foreach (YamlMappingNode node in entities.Children)
             {
                 var entityName = ((YamlScalarNode)node.Children.First(x => ((YamlScalarNode)x.Key).Value == "Entity").Value).Value;
 
-                this.Logger.WriteMessage($"Entity: {entityName}", LogMessageType.Debug);
+                Logger.WriteMessage($"Entity: {entityName}", LogMessageTypes.Debug);
 
                 var entityDescription = new EntityDescription(entityName);
                 sceneDescription.Entities.Add(entityDescription);
@@ -162,7 +167,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                 {
                     foreach (YamlMappingNode componentNodeElement in ((YamlSequenceNode)componentNode).Children)
                     {
-                        var componentDescription = ReadComponent(entityDescription, componentNodeElement.Children.ToArray());
+                        var componentDescription = ReadComponent(componentNodeElement.Children.ToArray());
                      
                         if (componentDescription != null)
                         {
@@ -176,14 +181,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
             }
         }
 
-        private ComponentDescription? ReadComponent(EntityDescription entityDescription, KeyValuePair<YamlNode, YamlNode>[] componentsData)
+        private static ComponentDescription? ReadComponent(KeyValuePair<YamlNode, YamlNode>[] componentsData)
         {
             ComponentDescription? componentDescription = null;
 
             foreach (var node in componentsData)
             {
                 var nodeKey = ((YamlScalarNode)node.Key).Value;
-                this.Logger.WriteMessage($"{node.Key} - {node.Value} ({node.Value.NodeType})", LogMessageType.Debug);
+                Logger.WriteMessage($"{node.Key} - {node.Value} ({node.Value.NodeType})", LogMessageTypes.Debug);
 
                 if (nodeKey == "Component")
                 {
@@ -196,7 +201,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                     {
                         var scalarNode = (YamlScalarNode)node.Value;
 
-                        this.Logger.WriteMessage($"Scalar node style: {scalarNode.Style}");
+                        Logger.WriteMessage($"Scalar node style: {scalarNode.Style}");
 
                         if (scalarNode.Style == ScalarStyle.Plain)
                         {
@@ -243,7 +248,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
 
                     else
                     {
-                        this.Logger.WriteMessage("Warning: Unsupported yaml node type.", LogMessageType.Warning);
+                        Logger.WriteMessage("Warning: Unsupported yaml node type.", LogMessageTypes.Warning);
                     }
                 }
             }

@@ -8,22 +8,22 @@ namespace CoreEngine.Compiler
 {
     class Program
     {
-        private static async Task RunCompilePass(Logger logger, ResourceCompiler resourceCompiler, string input, string? searchPattern, bool isWatchMode, bool rebuildAll)
+        private static async Task RunCompilePass(ResourceCompiler resourceCompiler, string input, string? searchPattern, bool isWatchMode, bool rebuildAll)
         {
             if (!isWatchMode)
             {
-                logger.WriteMessage($"Compiling '{input}'...", LogMessageType.Important);
+                Logger.WriteMessage($"Compiling '{input}'...", LogMessageTypes.Important);
             }
 
             try
             {
-                var projectCompiler = new ProjectCompiler(resourceCompiler, logger);
+                var projectCompiler = new ProjectCompiler(resourceCompiler);
                 await projectCompiler.CompileProject(input, searchPattern, isWatchMode, rebuildAll);
             }
 
-            catch(Exception e)
+            catch (Exception e)
             {
-                logger.WriteMessage($"Error: {e.Message}", LogMessageType.Error);
+                Logger.WriteMessage($"Error: {e.Message}", LogMessageTypes.Error);
             }
         }
 
@@ -33,11 +33,10 @@ namespace CoreEngine.Compiler
             // TODO: Add help parameter
             // TODO: Add version number
 
-            var logger = new Logger();
-            var resourceCompiler = new ResourceCompiler(logger);
+            var resourceCompiler = new ResourceCompiler();
 
-            logger.WriteMessage("CoreEngine Compiler Tool version 0.1");
-            logger.WriteLine();
+            Logger.WriteMessage("CoreEngine Compiler Tool version 1.0");
+            Logger.WriteLine();
             
             if (args.Length > 0)
             {
@@ -53,16 +52,16 @@ namespace CoreEngine.Compiler
 
                 if (!isWatchMode)
                 {
-                    await RunCompilePass(logger, resourceCompiler, input, searchPattern, isWatchMode, rebuildAll);
+                    await RunCompilePass(resourceCompiler, input, searchPattern, isWatchMode, rebuildAll);
                 }
 
                 else
                 {
-                    logger.WriteMessage("Entering watch mode...", LogMessageType.Action);
+                    Logger.WriteMessage("Entering watch mode...", LogMessageTypes.Action);
 
                     while (true)
                     {
-                        await RunCompilePass(logger, resourceCompiler, input, null, isWatchMode, rebuildAll);
+                        await RunCompilePass(resourceCompiler, input, null, isWatchMode, rebuildAll);
                         Thread.Sleep(1000);
                     }
                 }

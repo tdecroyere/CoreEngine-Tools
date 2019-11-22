@@ -9,12 +9,10 @@ namespace CoreEngine.Tools.ResourceCompilers
 {
     public class ResourceCompiler
     {
-        private readonly Logger logger;
         private IDictionary<string, ResourceDataCompiler> dataCompilers;
 
-        public ResourceCompiler(Logger logger)
+        public ResourceCompiler()
         {
-            this.logger = logger;
             this.dataCompilers = new Dictionary<string, ResourceDataCompiler>();
 
             AddInternalDataCompilers();
@@ -74,7 +72,7 @@ namespace CoreEngine.Tools.ResourceCompilers
 
             catch(Exception e)
             {
-                logger.WriteMessage($"Error: {e.ToString()}", LogMessageType.Error);
+                Logger.WriteMessage($"Error: {e.ToString()}", LogMessageTypes.Error);
             }
 
             return false;
@@ -88,11 +86,14 @@ namespace CoreEngine.Tools.ResourceCompilers
             {
                 if (type.IsSubclassOf(typeof(ResourceDataCompiler)))
                 {
-                    var dataCompiler = (ResourceDataCompiler)Activator.CreateInstance(type, this.logger);
+                    var dataCompiler = (ResourceDataCompiler?)Activator.CreateInstance(type);
 
-                    foreach (var supportedExtension in dataCompiler.SupportedSourceExtensions)
+                    if (dataCompiler != null)
                     {
-                        this.dataCompilers.Add(supportedExtension, dataCompiler);
+                        foreach (var supportedExtension in dataCompiler.SupportedSourceExtensions)
+                        {
+                            this.dataCompilers.Add(supportedExtension, dataCompiler);
+                        }
                     }
                 }
             }

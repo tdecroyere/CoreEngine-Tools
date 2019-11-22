@@ -9,20 +9,13 @@ using Microsoft.Win32;
 
 namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 {
-    public class DirectXShaderCompiler
+    public static class DirectXShaderCompiler
     {
-        private readonly Logger logger;
-
-        public DirectXShaderCompiler(Logger logger)
-        {
-            this.logger = logger;
-        }
-
-        public async Task<ReadOnlyMemory<byte>?> CompileDirectXShaderAsync(ReadOnlyMemory<byte> data)
+        public static async Task<ReadOnlyMemory<byte>?> CompileDirectXShaderAsync(ReadOnlyMemory<byte> data)
         {
             var useDxil = false;
 
-            this.logger.WriteMessage("Compiling DirectX shader with command line tools");
+            Logger.WriteMessage("Compiling DirectX shader with command line tools");
 
             string? windowsSdkToolPath = null;
 
@@ -46,7 +39,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             // TODO: Remove intermediate files
             // TODO: Check debug profile
 
-            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.hlsl");
             var vsOutputShaderFile = Path.Combine(tempFolder, "vs_tempShader.cso");
             var psOutputShaderFile = Path.Combine(tempFolder, "ps_tempShader.cso");
@@ -54,7 +47,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             await File.WriteAllBytesAsync(inputShaderFile, data.ToArray());
 
-            var buildProcess = new Process();
+            using var buildProcess = new Process();
 
             if (useDxil)
             {

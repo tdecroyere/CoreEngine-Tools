@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using CoreEngine.Tools.Common;
@@ -7,11 +8,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 {
     public class ShaderResourceDataCompiler : ResourceDataCompiler
     {
-        public ShaderResourceDataCompiler(Logger logger) : base(logger)
-        {
-
-        }
-        
         public override string Name
         {
             get
@@ -20,7 +16,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             }
         }
 
-        public override string[] SupportedSourceExtensions
+        public override IList<string> SupportedSourceExtensions
         {
             get
             {
@@ -38,21 +34,24 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
         public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
             var version = 1;
 
-            this.Logger.WriteMessage($"Shader compiler platform: {context.TargetPlatform}");
+            Logger.WriteMessage($"Shader compiler platform: {context.TargetPlatform}");
             ReadOnlyMemory<byte>? shaderCompiledData = null;
 
             if (context.TargetPlatform == "osx")
             {
-                var metalShaderCompiler = new MetalShaderCompiler(Logger);
-                shaderCompiledData = await metalShaderCompiler.CompileMetalShaderAsync(sourceData);
+                shaderCompiledData = await MetalShaderCompiler.CompileMetalShaderAsync(sourceData);
             }
 
             else if (context.TargetPlatform == "windows")
             {
-                var directxShaderCompiler = new DirectXShaderCompiler(Logger);
-                shaderCompiledData = await directxShaderCompiler.CompileDirectXShaderAsync(sourceData);
+                shaderCompiledData = await DirectXShaderCompiler.CompileDirectXShaderAsync(sourceData);
             }
             
             if (shaderCompiledData != null)

@@ -13,13 +13,13 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
     public class MeshSubObject
     {
-        public uint StartIndex;
-        public uint IndexCount;
+        public uint StartIndex { get; set; }
+        public uint IndexCount { get; set; }
     }
 
     public struct MeshVertex
     {
-        public Vector3 Position;
-        public Vector3 Normal;
+        public Vector3 Position { get; set; }
+        public Vector3 Normal { get; set; }
     }
 }

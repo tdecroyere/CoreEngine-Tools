@@ -7,18 +7,11 @@ using CoreEngine.Tools.Common;
 
 namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 {
-    public class MetalShaderCompiler
+    public static class MetalShaderCompiler
     {
-        private readonly Logger logger;
-
-        public MetalShaderCompiler(Logger logger)
+        public static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data)
         {
-            this.logger = logger;
-        }
-
-        public async Task<ReadOnlyMemory<byte>?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data)
-        {
-            this.logger.WriteMessage("Compiling metal shader with command line tools");
+            Logger.WriteMessage("Compiling metal shader with command line tools");
 
             var transpiledMetalShader = await TranspileShaderToMetalAsync(data);
 
@@ -35,14 +28,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             // TODO: Add parameters for vertex and pixel main
             // TODO: Use shader conductor lib instead of command line tool
 
-            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
             var inputShaderFile = Path.Combine(tempFolder, "tempShader_transpile.hlsl");
             var vsOutputShaderFile = Path.Combine(tempFolder, "vs_tempShader_transpile.metal");
             var psOutputShaderFile = Path.Combine(tempFolder, "ps_tempShader_transpile.metal");
 
             await File.WriteAllBytesAsync(inputShaderFile, data.ToArray());
 
-            var buildProcess = new Process();
+            using var buildProcess = new Process();
             buildProcess.StartInfo.FileName = "ShaderConductorCmd";
             buildProcess.StartInfo.Arguments = $"-I {inputShaderFile} -O {vsOutputShaderFile} -S vs -T msl_macos -V 20200 -E VertexMain";
 
@@ -81,14 +74,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             // TODO: Put intermediate files into temp directory
             // TODO: Remove intermediate files
 
-            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.metal");
             var outputAirFile = Path.Combine(tempFolder, "tempShader.air");
             var outputMetalLibFile = Path.Combine(tempFolder, "tempShader.metallib");
 
             await File.WriteAllBytesAsync(inputShaderFile, data.ToArray());
 
-            var buildProcess = new Process();
+            using var buildProcess = new Process();
             buildProcess.StartInfo.FileName = "xcrun";
             buildProcess.StartInfo.Arguments = $"-sdk macosx metal -ffast-math -gline-tables-only -MO -c {inputShaderFile} -o {outputAirFile}";
 

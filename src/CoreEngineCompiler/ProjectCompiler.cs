@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -14,12 +15,10 @@ namespace CoreEngine.Compiler
     public class ProjectCompiler
     {
         private readonly ResourceCompiler resourceCompiler;
-        private readonly Logger logger;
 
-        public ProjectCompiler(ResourceCompiler resourceCompiler, Logger logger)
+        public ProjectCompiler(ResourceCompiler resourceCompiler)
         {
             this.resourceCompiler = resourceCompiler;
-            this.logger = logger;
         }
 
         public async Task CompileProject(string path, string? searchPattern, bool isWatchMode, bool rebuildAll)
@@ -27,6 +26,13 @@ namespace CoreEngine.Compiler
             var project = OpenProject(path);
 
             var inputDirectory = Path.GetDirectoryName(Path.GetFullPath(path));
+
+            if (inputDirectory == null)
+            {
+                Logger.WriteMessage($"Input path is not a directory.", LogMessageTypes.Error);
+                return;
+            }
+
             var inputObjDirectory = Path.Combine(inputDirectory, ".coreengine");
             var outputDirectory = Path.GetFullPath(Path.Combine(inputDirectory, project.OutputDirectory));
 
@@ -50,8 +56,8 @@ namespace CoreEngine.Compiler
 
             if (!isWatchMode)
             {
-                this.logger.WriteMessage($"InputPath: {inputDirectory}", LogMessageType.Debug);
-                this.logger.WriteMessage($"OutputPath: {outputDirectory}", LogMessageType.Debug);
+                Logger.WriteMessage($"InputPath: {inputDirectory}", LogMessageTypes.Debug);
+                Logger.WriteMessage($"OutputPath: {outputDirectory}", LogMessageTypes.Debug);
             }
 
             var sourceFiles = SearchSupportedSourceFiles(inputDirectory, searchPattern);
@@ -79,10 +85,10 @@ namespace CoreEngine.Compiler
                 {
                     if (isWatchMode)
                     {
-                        this.logger.WriteMessage($"{DateTime.Now.ToString()} - Detected file change for '{sourceFile}'");
+                        Logger.WriteMessage($"{DateTime.Now.ToString(CultureInfo.InvariantCulture)} - Detected file change for '{sourceFile}'");
                     }
                     
-                    var result = await CompileSourceFile(sourceFileAbsoluteDirectory, outputDirectory, sourceFile, destinationPath);
+                    var result = await CompileSourceFile(sourceFileAbsoluteDirectory, sourceFile, destinationPath);
                     
                     if (result)
                     {
@@ -95,8 +101,8 @@ namespace CoreEngine.Compiler
 
             if (compiledFilesCount > 0)
             {
-                this.logger.WriteLine();
-                this.logger.WriteMessage($"Success: Compiled {compiledFilesCount} file(s) in {stopwatch.Elapsed}.", LogMessageType.Success);
+                Logger.WriteLine();
+                Logger.WriteMessage($"Success: Compiled {compiledFilesCount} file(s) in {stopwatch.Elapsed}.", LogMessageTypes.Success);
             }
 
             // TODO: Remove deleted files from file tracker
@@ -104,20 +110,20 @@ namespace CoreEngine.Compiler
             fileTracker.WriteFile(fileTrackerPath);
         }
 
-        private Project OpenProject(string path)
+        private static Project OpenProject(string path)
         {
             if (!File.Exists(path))
             {
-                throw new ArgumentException("Project file doesn't exist.", "path");
+                throw new ArgumentException("Project file doesn't exist.", nameof(path));
             }
 
             if (Path.GetExtension(path) != ".ceproj")
             {
-                throw new ArgumentException("Project file is not a CoreEngine project.", "path");
+                throw new ArgumentException("Project file is not a CoreEngine project.", nameof(path));
             }
 
             var content = File.ReadAllText(path);
-            var input = new StringReader(content);
+            using var input = new StringReader(content);
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(new PascalCaseNamingConvention())
@@ -153,7 +159,14 @@ namespace CoreEngine.Compiler
 
         private static string ConstructSourceFileAbsolutDirectory(string inputDirectory, string sourceFile)
         {
-            var sourceFileAbsoluteDirectory = Path.GetDirectoryName(sourceFile).Replace(inputDirectory, string.Empty);
+            var directoryName = Path.GetDirectoryName(sourceFile);
+
+            if (directoryName == null)
+            {
+                throw new ArgumentException("Input is not a directory.", nameof(inputDirectory));
+            }
+
+            var sourceFileAbsoluteDirectory = directoryName.Replace(inputDirectory, string.Empty);
 
             if (!string.IsNullOrEmpty(sourceFileAbsoluteDirectory))
             {
@@ -171,9 +184,9 @@ namespace CoreEngine.Compiler
             return destinationPath;
         }
 
-        private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string outputDirectory, string sourceFile, string destinationPath)
+        private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string sourceFile, string destinationPath)
         {
-            this.logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageType.Action);
+            Logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageTypes.Action);
             
             // TODO: Get the target platform from the command line arguments
             var targetPlatform = "windows";
@@ -196,12 +209,12 @@ namespace CoreEngine.Compiler
 
                 if (result)
                 {
-                    this.logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageType.Success);
+                    Logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageTypes.Success);
                 }
 
                 else
                 {
-                    this.logger.WriteMessage($"Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageType.Error);
+                    Logger.WriteMessage($"Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageTypes.Error);
                 }
 
                 return result;
@@ -209,18 +222,18 @@ namespace CoreEngine.Compiler
 
             catch
             {
-                this.logger.WriteMessage($"Critical Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageType.Error);
+                Logger.WriteMessage($"Critical Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageTypes.Error);
                 return false;
             }
         }
 
-        private void CleanupOutputDirectory(string outputDirectory, List<string> remainingDestinationFiles)
+        private static void CleanupOutputDirectory(string outputDirectory, List<string> remainingDestinationFiles)
         {
             foreach (var remainingDestinationFile in remainingDestinationFiles)
             {
                 if (Path.GetFileName(remainingDestinationFile)[0] != '.')
                 {
-                    this.logger.WriteMessage($"Cleaning file '{remainingDestinationFile}...", LogMessageType.Debug);
+                    Logger.WriteMessage($"Cleaning file '{remainingDestinationFile}...", LogMessageTypes.Debug);
                     File.Delete(remainingDestinationFile);
                 }
             }
@@ -230,7 +243,7 @@ namespace CoreEngine.Compiler
                 if (Directory.GetFiles(directory).Length == 0 &&
                     Directory.GetDirectories(directory).Length == 0)
                 {
-                    this.logger.WriteMessage($"Cleaning empty directory '{directory}...", LogMessageType.Debug);
+                    Logger.WriteMessage($"Cleaning empty directory '{directory}...", LogMessageTypes.Debug);
                     Directory.Delete(directory, false);
                 }
             }
