@@ -31,14 +31,11 @@ Entities:
   - Entity: 'MainCamera'
     Components:
       - Component: 'CoreEngine.Graphics.Components.CameraComponent'
-        IsActive: true
       - Component: 'CoreEngine.Components.TransformComponent'
         Position: [-100, 100, 0]
         RotationY: 90
       - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
         MovementAcceleration: 30000
-      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
-        MeshResourceId: 'resource:/teapot.mesh'
   - Entity: 'DebugCamera'
     Components:
       - Component: 'CoreEngine.Graphics.Components.CameraComponent'
@@ -47,4 +44,4 @@ Entities:
         RotationY: 90
         RotationX: 90
       - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
-        MovementAcceleration: 30000
+        MovementAcceleration: 30000 

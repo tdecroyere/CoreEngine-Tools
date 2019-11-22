@@ -50,14 +50,31 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                 meshDataReader = new ObjMeshDataReader();
             }
 
-            // TODO: Optimize mesh indices
-
             if (meshDataReader != null)
             {
                 var meshData = await meshDataReader.ReadAsync(sourceData);
 
                 if (meshData != null)
                 {
+                    // TODO: Optimize mesh indices
+
+                    // Compute Bounding Boxes
+                    foreach (var subObject in meshData.MeshSubObjects)
+                    {
+                        Logger.BeginAction($"Computing Bounding Box");
+
+                        for (var i = 0; i < subObject.IndexCount; i++)
+                        {
+                            var index = meshData.Indices[i + (int)subObject.StartIndex];
+                            var vertex = meshData.Vertices[(int)index];
+
+                            subObject.BoundingBox.Add(vertex.Position);
+                        }
+
+                        Logger.WriteMessage($"Bounding Box: {subObject.BoundingBox}");
+                        Logger.EndAction();
+                    }
+
                     var destinationMemoryStream = new MemoryStream();
 
                     using var streamWriter = new BinaryWriter(destinationMemoryStream);
@@ -91,6 +108,12 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                         
                         streamWriter.Write(subObject.StartIndex);
                         streamWriter.Write(subObject.IndexCount);
+                        streamWriter.Write(subObject.BoundingBox.MinPoint.X);
+                        streamWriter.Write(subObject.BoundingBox.MinPoint.Y);
+                        streamWriter.Write(subObject.BoundingBox.MinPoint.Z);
+                        streamWriter.Write(subObject.BoundingBox.MaxPoint.X);
+                        streamWriter.Write(subObject.BoundingBox.MaxPoint.Y);
+                        streamWriter.Write(subObject.BoundingBox.MaxPoint.Z);
                     }
 
                     streamWriter.Flush();

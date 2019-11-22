@@ -13,8 +13,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
     public class MeshSubObject
     {
+        public MeshSubObject()
+        {
+            this.BoundingBox = new BoundingBox();
+        }
+
         public uint StartIndex { get; set; }
         public uint IndexCount { get; set; }
+        public BoundingBox BoundingBox { get; set; }
     }
 
     public struct MeshVertex

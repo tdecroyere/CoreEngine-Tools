@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <NoWarn>CA1303;CA1815;CA2007;CS8604;CA1043;CA1031;CA1721;CA1307;CA2227</NoWarn>
+    <NoWarn>IDE0003;CA1303;CA1815;CA2007;CS8604;CA1043;CA1031;CA1721;CA1307;CA2227</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
