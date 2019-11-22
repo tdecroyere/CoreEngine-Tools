@@ -53,8 +53,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
 
             var version = 1;
 
-            Logger.WriteMessage("Scene compiler", LogMessageTypes.Debug);
-
             var sceneDescription = ParseYamlFile(sourceData);
             Logger.WriteMessage($"Scene Entity Count: {sceneDescription.Entities.Count}", LogMessageTypes.Debug);
 
@@ -77,6 +75,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                 }
             }
 
+            Logger.BeginAction("Writing Scene data");
+            
             foreach (var entity in sceneDescription.Entities)
             {
                 streamWriter.Write(entity.Name);
@@ -123,6 +123,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                 }
             }
 
+            Logger.EndAction();
+
             streamWriter.Flush();
             destinationMemoryStream.Flush();
 
@@ -156,7 +158,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
             {
                 var entityName = ((YamlScalarNode)node.Children.First(x => ((YamlScalarNode)x.Key).Value == "Entity").Value).Value;
 
-                Logger.WriteMessage($"Entity: {entityName}", LogMessageTypes.Debug);
+                Logger.BeginAction($"Reading Entity: {entityName}");
 
                 var entityDescription = new EntityDescription(entityName);
                 sceneDescription.Entities.Add(entityDescription);
@@ -176,6 +178,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
                         }
                     }
                 }
+
+                Logger.EndAction();
 
                 entityDescription.EntityLayoutIndex = sceneDescription.AddEntityLayoutDescription(entityLayoutDescription);
             }

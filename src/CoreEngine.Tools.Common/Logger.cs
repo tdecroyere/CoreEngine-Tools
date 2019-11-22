@@ -43,7 +43,7 @@ namespace CoreEngine.Tools.Common
                 Console.Write(" ");
             }
 
-            if (messageType != LogMessageTypes.Normal && messageType != LogMessageTypes.Debug && messageType != LogMessageTypes.Action && messageType != LogMessageTypes.Success)
+            if (messageType != LogMessageTypes.Normal && messageType != LogMessageTypes.Debug && messageType != LogMessageTypes.Important && messageType != LogMessageTypes.Action && messageType != LogMessageTypes.Success)
             {
                 message = $"{messageType.ToString()}: " + message;
             }

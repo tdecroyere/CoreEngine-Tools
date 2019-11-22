@@ -186,7 +186,7 @@ namespace CoreEngine.Compiler
 
         private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string sourceFile, string destinationPath)
         {
-            Logger.WriteMessage($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'...", LogMessageTypes.Action);
+            Logger.BeginAction($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'");
             
             // TODO: Get the target platform from the command line arguments
             var targetPlatform = "windows";
@@ -209,12 +209,12 @@ namespace CoreEngine.Compiler
 
                 if (result)
                 {
-                    Logger.WriteMessage($"Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' done.", LogMessageTypes.Success);
+                    Logger.EndAction();
                 }
 
                 else
                 {
-                    Logger.WriteMessage($"Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageTypes.Error);
+                    Logger.EndActionError();
                 }
 
                 return result;
@@ -222,7 +222,7 @@ namespace CoreEngine.Compiler
 
             catch
             {
-                Logger.WriteMessage($"Critical Error: Compilation of '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(destinationPath))}' failed.", LogMessageTypes.Error);
+                Logger.EndActionError();
                 return false;
             }
         }

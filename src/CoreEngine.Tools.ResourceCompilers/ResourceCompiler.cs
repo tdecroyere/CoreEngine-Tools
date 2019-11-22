@@ -70,7 +70,7 @@ namespace CoreEngine.Tools.ResourceCompilers
                 }
             }
 
-            catch(Exception e)
+            catch (Exception e)
             {
                 Logger.WriteMessage($"Error: {e.ToString()}", LogMessageTypes.Error);
             }

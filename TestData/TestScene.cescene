@@ -47,4 +47,4 @@ Entities:
         RotationY: 90
         RotationX: 90
       - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
-        MovementAcceleration: 30000 
+        MovementAcceleration: 30000
