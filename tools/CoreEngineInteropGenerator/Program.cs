@@ -18,6 +18,8 @@ namespace CoreEngineInteropGenerator
             var swiftProtocolsOutputPath = "../../../CoreEngine/src/Host/Apple/CoreEngineCommon/HostServices";
             var swiftInteropOutputPath = "../../../CoreEngine/src/Host/Apple/CoreEngineCommon/HostServices/Interop";
             var cHeaderOutputPath = "../../../CoreEngine/src/Host/Common";
+            var cppOutputPath = "../../../CoreEngine/src/Host/Windows/Interop";
+
 
             if (args.Length > 0)
             {
@@ -51,6 +53,12 @@ namespace CoreEngineInteropGenerator
             if (!Directory.Exists(cHeaderOutputPath))
             {
                 Console.WriteLine("ERROR: C Header Output path is not a directory.");
+                return;
+            }
+
+            if (!Directory.Exists(cppOutputPath))
+            {
+                Console.WriteLine("ERROR: Cpp Output path is not a directory.");
                 return;
             }
 
@@ -101,6 +109,18 @@ namespace CoreEngineInteropGenerator
 
                 outputFileName = Path.GetFileName(inputFile).Substring(1).Replace(".cs", ".h");
                 await File.WriteAllTextAsync(Path.Combine(cHeaderOutputPath, outputFileName), output);
+
+                // Generate Cpp Code
+                var cppImplementationTypes = new Dictionary<string, string>()
+                {
+                    { "IGraphicsService", "WindowsDirect3D12Renderer" },
+                    { "IInputsService", "InputsManager" }
+                };
+
+                output = CppCodeGenerator.GenerateInteropCode(compilationUnit, cppImplementationTypes);
+                
+                outputFileName = Path.GetFileName(inputFile).Substring(1).Replace(".cs", "Interop.h");
+                await File.WriteAllTextAsync(Path.Combine(cppOutputPath, outputFileName), output);
             }
         }
     }
