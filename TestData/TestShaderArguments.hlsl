@@ -22,7 +22,25 @@ struct ColorPixelOutput
 	float4 Color: SV_TARGET;
 };
 
-struct ObjectProperties
+struct CoreEngine_RenderPassParameters
+{
+    matrix ViewMatrix;
+    matrix ProjectionMatrix;
+}; 
+
+struct MaterialParameters
+{
+    float3 Color;
+};
+
+struct LightParameters
+{
+    float3 Position;
+    float3 Color;
+}
+
+// TODO: Make a system to avoid copying instance parameters of static objects every frames
+struct InstanceParameters
 {
     matrix WorldMatrix;
 };
@@ -32,14 +50,9 @@ struct VertexShaderParameters
     uint objectPropertyIndex;
 };
 
-struct CoreEngine_RenderPassParameters
-{
-    matrix ViewMatrix;
-    matrix ProjectionMatrix;
-}; 
-
+// TODO: Hide the definition of register spaces
 ConstantBuffer<CoreEngine_RenderPassParameters> renderPassParameters : register(b0, space1);
-StructuredBuffer<ObjectProperties> objectProperties : register(t1, space1);
+StructuredBuffer<InstanceParameters> instanceParameters : register(t1, space1);
 StructuredBuffer<VertexShaderParameters> vertexShaderParameters : register(t2, space1);
 
 VertexOutput VertexMain(const VertexInput input, uint instanceId: SV_InstanceID) 
@@ -48,7 +61,7 @@ VertexOutput VertexMain(const VertexInput input, uint instanceId: SV_InstanceID)
 
     int objectPropertyIndex = vertexShaderParameters[instanceId].objectPropertyIndex;
 
-    matrix worldMatrix = objectProperties[objectPropertyIndex].WorldMatrix;
+    matrix worldMatrix = instanceParameters[objectPropertyIndex].WorldMatrix;
     matrix worldViewProjMatrix = mul(worldMatrix, mul(renderPassParameters.ViewMatrix, renderPassParameters.ProjectionMatrix));
 
     output.Position = mul(float4(input.Position, 1), worldViewProjMatrix);

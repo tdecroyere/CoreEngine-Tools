@@ -38,8 +38,8 @@ currentDir=$(
   pwd
 )
 
-sudo rm /usr/local/bin/CoreEngineCompiler
-sudo ln -s $currentDir/CoreEngineCompiler /usr/local/bin/CoreEngineCompiler
+# sudo rm /usr/local/bin/CoreEngineCompiler
+# sudo ln -s $currentDir/CoreEngineCompiler /usr/local/bin/CoreEngineCompiler
 
 if [ $? -eq 0 ]; then
     copyFiles
