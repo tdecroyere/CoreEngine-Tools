@@ -9,15 +9,23 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 {
     public static class MetalShaderCompiler
     {
-        public static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data)
+        public static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data, bool transpileShader)
         {
             Logger.WriteMessage("Compiling metal shader with command line tools");
 
-            var transpiledMetalShader = await TranspileShaderToMetalAsync(data);
-
-            if (transpiledMetalShader != null)
+            if (transpileShader)
             {
-                return await CompileMetalShaderSourceAsync(transpiledMetalShader.Value);
+                var transpiledMetalShader = await TranspileShaderToMetalAsync(data);
+
+                if (transpiledMetalShader != null)
+                {
+                    return await CompileMetalShaderSourceAsync(transpiledMetalShader.Value);
+                }
+            }
+
+            else
+            {
+                return await CompileMetalShaderSourceAsync(data);
             }
 
             return null;

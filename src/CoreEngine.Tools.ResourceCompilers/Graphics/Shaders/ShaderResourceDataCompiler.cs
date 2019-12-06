@@ -20,7 +20,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
         {
             get
             {
-                return new string[] { ".hlsl" };
+                return new string[] { ".hlsl", ".metal" };
             }
         }
 
@@ -46,7 +46,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             if (context.TargetPlatform == "osx")
             {
-                shaderCompiledData = await MetalShaderCompiler.CompileMetalShaderAsync(sourceData);
+                shaderCompiledData = await MetalShaderCompiler.CompileMetalShaderAsync(sourceData, Path.GetExtension(context.SourceFilename) != ".metal");
             }
 
             else if (context.TargetPlatform == "windows")

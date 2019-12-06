@@ -45,7 +45,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
             MeshDataReader? meshDataReader = null;
 
-            if (Path.GetExtension(context.TargetFilename) == ".obj")
+            if (Path.GetExtension(context.SourceFilename) == ".obj")
             {
                 meshDataReader = new ObjMeshDataReader();
             }

@@ -7,7 +7,7 @@ namespace CoreEngine.Tools.ResourceCompilers
         public CompilerContext(string targetPlatform, string targetFilename)
         {
             this.TargetPlatform = targetPlatform;
-            this.TargetFilename = targetFilename;
+            this.SourceFilename = targetFilename;
         }
 
         public string TargetPlatform
@@ -15,7 +15,7 @@ namespace CoreEngine.Tools.ResourceCompilers
             get;
         }
 
-        public string TargetFilename
+        public string SourceFilename
         {
             get;
         }

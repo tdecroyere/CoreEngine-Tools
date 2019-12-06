@@ -37,7 +37,7 @@ struct LightParameters
 {
     float3 Position;
     float3 Color;
-}
+};
 
 // TODO: Make a system to avoid copying instance parameters of static objects every frames
 struct InstanceParameters
