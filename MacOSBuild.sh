@@ -3,13 +3,18 @@
 outputDirectory="./Build/MacOS/"
 
 mkdir -p $outputDirectory > /dev/null
+mkdir -p $outputDirectory/Tools > /dev/null
 
 cd $outputDirectory
 
 copyFiles() {
     echo [93mCopy files...[0m
-    cp "../../external/ShaderConductor/MacOS/"* "./"
-    chmod +x "./ShaderConductorCmd"
+
+    cp -R "../../external/ShaderConductor/MacOS/" "./Tools/ShaderConductor"
+    chmod +x "./Tools/ShaderConductorCmd"
+
+    # cp -R "../../external/Compressonator/MacOS/" "./Tools/Compressonator"
+
     # cp "../../src/Host/MacOS/Info.plist" "../"$outputDirectory
     # cp * "../"$outputDirectory"/CoreClr"
     #cp *".dll" "../"$outputDirectory"/Frameworks"
