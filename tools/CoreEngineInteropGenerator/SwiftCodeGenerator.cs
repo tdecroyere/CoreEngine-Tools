@@ -52,6 +52,14 @@ namespace CoreEngineInteropGenerator
                                 stringBuilder.Append($"_ {parameter.Identifier}: UnsafeMutableRawPointer, _ {parameter.Identifier}Length: Int");
                             }
 
+                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
+                            {
+                                var index = parameter.Type!.ToString().IndexOf("<");
+                                var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
+
+                                stringBuilder.Append($"_ {parameter.Identifier}: [{parameterType}]");
+                            }
+
                             else
                             {
                                stringBuilder.Append($"_ {parameter.Identifier}: {MapCSharpTypeToSwift(parameter.Type.ToString())}");
@@ -127,6 +135,14 @@ namespace CoreEngineInteropGenerator
                                 stringBuilder.Append($"_ {parameter.Identifier}: UnsafeMutableRawPointer?, _ {parameter.Identifier}Length: Int32");
                             }
 
+                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
+                            {
+                                var index = parameter.Type!.ToString().IndexOf("<");
+                                var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
+
+                                stringBuilder.Append($"_ {parameter.Identifier}: UnsafeMutablePointer<{parameterType}>?, _ {parameter.Identifier}Length: Int32");
+                            }
+
                             else
                             {
                                stringBuilder.Append($"_ {parameter.Identifier}: {MapCSharpTypeToSwift(parameter.Type.ToString(), true)}");
@@ -173,6 +189,11 @@ namespace CoreEngineInteropGenerator
                             if (parameter.Type!.ToString() == "ReadOnlySpan<byte>")
                             {
                                 stringBuilder.Append($"{parameter.Identifier}!, Int({parameter.Identifier}Length)");
+                            }
+
+                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
+                            {
+                                stringBuilder.Append($"Array(UnsafeBufferPointer(start: {parameter.Identifier}, count: Int({parameter.Identifier}Length)))");
                             }
 
                             else

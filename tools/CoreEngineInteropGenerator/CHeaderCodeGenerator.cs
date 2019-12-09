@@ -102,6 +102,14 @@ namespace CoreEngineInteropGenerator
                                 stringBuilder.Append($"void* {parameter.Identifier}, int {parameter.Identifier}Length");
                             }
 
+                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
+                            {
+                                var index = parameter.Type!.ToString().IndexOf("<");
+                                var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
+
+                                stringBuilder.Append($"struct {parameterType}* {parameter.Identifier}, int {parameter.Identifier}Length");
+                            }
+
                             else
                             {
                                stringBuilder.Append($"{MapCSharpTypeToC(parameter.Type.ToString())} {parameter.Identifier}");

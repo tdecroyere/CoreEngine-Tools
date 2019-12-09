@@ -63,6 +63,17 @@ namespace CoreEngineInteropGenerator
                                 delegateParameters = delegateParameters.Insert(++currentParameterIndex, SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
                             }
 
+                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
+                            {
+                                var index = parameter.Type!.ToString().IndexOf("<");
+                                var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
+
+                                var bytePointerParameter = parameter.WithType(SyntaxFactory.ParseTypeName($"{parameterType}*"));
+                                delegateParameters = delegateParameters.Replace(parameter, bytePointerParameter);
+                                
+                                delegateParameters = delegateParameters.Insert(++currentParameterIndex, SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
+                            }
+
                             currentParameterIndex++;
                         }
                         
@@ -91,7 +102,12 @@ namespace CoreEngineInteropGenerator
                             {
                                 argumentList.Add(SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}Pinned")));
                                 argumentList.Insert(++currentParameterIndex, SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}.Length")));
-                                
+                            }
+
+                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
+                            {
+                                argumentList.Add(SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}Pinned")));
+                                argumentList.Insert(++currentParameterIndex, SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}.Length")));
                             }
 
                             else
@@ -115,11 +131,19 @@ namespace CoreEngineInteropGenerator
                             methodBody = SyntaxFactory.ReturnStatement(invocationExpression);
                         }
 
-                        var variablesToPin = parameters.Where(item => item.Type!.ToString() == "ReadOnlySpan<byte>");
+                        var variablesToPin = parameters.Where(item => item.Type!.ToString().Contains("ReadOnlySpan<"));
 
                         foreach (var variableToPin in variablesToPin)
                         {
-                            var pinnedVariableDeclaration = SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName("byte*"))
+                            var variableType = "byte*";
+
+                            if (variableToPin.Type!.ToString() != "ReadOnlySpan<byte>")
+                            {
+                                var index = variableToPin.Type!.ToString().IndexOf("<");
+                                variableType = variableToPin.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty) + "*";
+                            }
+
+                            var pinnedVariableDeclaration = SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName(variableType))
                                                                          .AddVariables(SyntaxFactory.VariableDeclarator($"{variableToPin.Identifier.Text}Pinned")
                                                                                                     .WithInitializer(SyntaxFactory.EqualsValueClause(SyntaxFactory.ParseExpression(variableToPin.Identifier.Text))));
                             
