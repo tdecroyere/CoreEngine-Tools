@@ -196,6 +196,11 @@ namespace CoreEngineInteropGenerator
                         if (method.ReturnType.ToString() != "void" && IsCastingNeededForSwiftType(swiftReturnType))
                         {
                             stringBuilder.Append(")");
+                            
+                            if (method.ReturnType.ToString() == "bool")
+                            {
+                                stringBuilder.Append(" ? 1 : 0");
+                            }
                         }
 
                         stringBuilder.AppendLine(")");
@@ -240,6 +245,11 @@ namespace CoreEngineInteropGenerator
             else if (typeName == "float")
             {
                 return "Float";
+            }
+
+            else if (typeName == "bool")
+            {
+                return isInteropCode ? "Int32" : "Bool";
             }
 
             return typeName;

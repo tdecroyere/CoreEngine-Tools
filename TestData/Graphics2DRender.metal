@@ -8,6 +8,12 @@ struct RenderPassParameters
     float4x4 ProjectionMatrix;
 };
 
+struct SurfaceProperties
+{
+    float4x4 WorldMatrix;
+    texture2d<float> Texture;
+};
+
 struct VertexInput
 {
     float3 Position             [[attribute(0)]];
@@ -21,13 +27,16 @@ struct VertexOutput
 };
 
 vertex VertexOutput VertexMain(VertexInput input [[stage_in]], 
-                               const device RenderPassParameters& renderPassParameters    [[buffer(1)]])
+                               uint instanceId [[instance_id]],
+                               const device RenderPassParameters& renderPassParameters    [[buffer(1)]],
+                               const device SurfaceProperties* surfaceProperties    [[buffer(2)]])
 {
     VertexOutput output = {};
 
+    float4x4 worldMatrix = surfaceProperties[instanceId].WorldMatrix;
     float4x4 viewProjMatrix = renderPassParameters.ProjectionMatrix;
 
-    output.Position = viewProjMatrix * float4(input.Position.xy, 0.0, 1.0);
+    output.Position = viewProjMatrix * worldMatrix * float4(input.Position.xy, 0.0, 1.0);
     output.TextureCoordinates = input.TextureCoordinates.xy;
     
     return output;
