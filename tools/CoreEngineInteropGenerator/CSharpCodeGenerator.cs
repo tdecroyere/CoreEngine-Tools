@@ -49,18 +49,17 @@ namespace CoreEngineInteropGenerator
                         var delegateVariableName = char.ToLowerInvariant(delegateTypeName[0]) + delegateTypeName.Substring(1);
 
                         // Generate delegate
-                        var delegateParameters = parameters.Insert(0, SyntaxFactory.Parameter(SyntaxFactory.ParseToken("context"))
+                        var delegateParameters = new List<ParameterSyntax>();
+                        delegateParameters.Insert(0, SyntaxFactory.Parameter(SyntaxFactory.ParseToken("context"))
                                                                                    .WithType(SyntaxFactory.ParseTypeName("IntPtr")));
-                        var currentParameterIndex = 0;
 
-                        foreach (var parameter in delegateParameters)
+                        foreach (var parameter in parameters)
                         {
                             if (parameter.Type!.ToString() == "ReadOnlySpan<byte>")
                             {
                                 var bytePointerParameter = parameter.WithType(SyntaxFactory.ParseTypeName("byte*"));
-                                delegateParameters = delegateParameters.Replace(parameter, bytePointerParameter);
-                                
-                                delegateParameters = delegateParameters.Insert(++currentParameterIndex, SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
+                                delegateParameters.Add(bytePointerParameter);
+                                delegateParameters.Add(SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
                             }
 
                             else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
@@ -69,14 +68,17 @@ namespace CoreEngineInteropGenerator
                                 var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
 
                                 var bytePointerParameter = parameter.WithType(SyntaxFactory.ParseTypeName($"{parameterType}*"));
-                                delegateParameters = delegateParameters.Replace(parameter, bytePointerParameter);
-                                
-                                delegateParameters = delegateParameters.Insert(++currentParameterIndex, SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
+
+                                delegateParameters.Add(bytePointerParameter);
+                                delegateParameters.Add(SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
                             }
 
-                            currentParameterIndex++;
+                            else
+                            {
+                                delegateParameters.Add(parameter);
+                            }
                         }
-                        
+
                         var generatedDelegate = SyntaxFactory.DelegateDeclaration(method.ReturnType, delegateTypeName)
                                                              .AddModifiers(SyntaxFactory.Token(SyntaxKind.InternalKeyword), SyntaxFactory.Token(SyntaxKind.UnsafeKeyword))
                                                              .AddParameterListParameters(delegateParameters.ToArray());
@@ -94,7 +96,7 @@ namespace CoreEngineInteropGenerator
                         var argumentList = new List<ArgumentSyntax>();
                         argumentList.Add(SyntaxFactory.Argument(SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.ThisExpression(), SyntaxFactory.IdentifierName("context"))));
                         
-                        currentParameterIndex = 1;
+                        var currentParameterIndex = 1;
 
                         foreach (var parameter in parameters)
                         {

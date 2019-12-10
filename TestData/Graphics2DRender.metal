@@ -30,6 +30,7 @@ struct VertexOutput
 {
     float4 Position [[position]];
     float2 TextureCoordinates;
+    uint InstanceId [[flat]];
 };
 
 vertex VertexOutput VertexMain(VertexInput input [[stage_in]], 
@@ -44,6 +45,7 @@ vertex VertexOutput VertexMain(VertexInput input [[stage_in]],
 
     output.Position = projectionMatrix * worldMatrix * float4(input.Position.xy, 0.0, 1.0);
     output.TextureCoordinates = input.TextureCoordinates.xy;
+    output.InstanceId = instanceId;
     
     return output;
 }
@@ -54,7 +56,7 @@ struct PixelOutput
 };
 
 fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
-                               texture2d<float> colorTexture [[ texture(1) ]])
+                               const device InputParameters& inputParameters    [[buffer(1)]])
 {
     constexpr sampler texture_sampler(mag_filter::linear,
                                       min_filter::linear,
@@ -62,7 +64,10 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
                                        
     PixelOutput output = {};
 
-    float4 textureColor = colorTexture.sample(texture_sampler, input.TextureCoordinates);
+    uint textureIndex = inputParameters.SurfaceProperties[input.InstanceId].TextureIndex;
+    texture2d<float> diffuseTexture = inputParameters.Textures[textureIndex];
+
+    float4 textureColor = diffuseTexture.sample(texture_sampler, input.TextureCoordinates);
     output.Color = textureColor;
 
     return output; 

@@ -57,7 +57,7 @@ namespace CoreEngineInteropGenerator
                                 var index = parameter.Type!.ToString().IndexOf("<");
                                 var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
 
-                                stringBuilder.Append($"_ {parameter.Identifier}: [{parameterType}]");
+                                stringBuilder.Append($"_ {parameter.Identifier}: [{MapCSharpTypeToSwift(parameterType, true)}]");
                             }
 
                             else
@@ -140,7 +140,7 @@ namespace CoreEngineInteropGenerator
                                 var index = parameter.Type!.ToString().IndexOf("<");
                                 var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
 
-                                stringBuilder.Append($"_ {parameter.Identifier}: UnsafeMutablePointer<{parameterType}>?, _ {parameter.Identifier}Length: Int32");
+                                stringBuilder.Append($"_ {parameter.Identifier}: UnsafeMutablePointer<{MapCSharpTypeToSwift(parameterType, true)}>?, _ {parameter.Identifier}Length: Int32");
                             }
 
                             else

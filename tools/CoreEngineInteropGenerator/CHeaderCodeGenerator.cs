@@ -107,7 +107,7 @@ namespace CoreEngineInteropGenerator
                                 var index = parameter.Type!.ToString().IndexOf("<");
                                 var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
 
-                                stringBuilder.Append($"struct {parameterType}* {parameter.Identifier}, int {parameter.Identifier}Length");
+                                stringBuilder.Append($"{MapCSharpTypeToC(parameterType)}* {parameter.Identifier}, int {parameter.Identifier}Length");
                             }
 
                             else
