@@ -95,7 +95,8 @@ namespace CoreEngineInteropGenerator
 
                 var swiftInteropImplementationTypes = new Dictionary<string, string>()
                 {
-                    { "IGraphicsService", "MetalRenderer" },
+                    { "IGraphicsService", "MetalGraphicsService" },
+                    { "IGraphicsBufferEncoder", "MetalGraphicsBufferEncoder" },
                     { "IInputsService", "InputsManager" }
                 };
 

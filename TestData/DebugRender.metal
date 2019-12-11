@@ -11,8 +11,8 @@ struct RenderPassParameters
 
 struct VertexInput
 {
-    float3 Position [[attribute(0)]];
-    float3 Color    [[attribute(1)]];
+    float3 Position;
+    float3 Color;
 };
 
 struct VertexOutput
@@ -21,9 +21,11 @@ struct VertexOutput
     float3 Color;
 };
 
-vertex VertexOutput VertexMain(VertexInput input                                            [[stage_in]], 
-                               const device RenderPassParameters& renderPassParameters    [[buffer(1)]])
+vertex VertexOutput VertexMain(const device VertexInput* vertexBuffer                  [[buffer(0)]], 
+                               const device RenderPassParameters& renderPassParameters [[buffer(1)]],
+                               uint vertexId                                           [[vertex_id]])
 {
+    VertexInput input = vertexBuffer[vertexId];
     VertexOutput output = {};
 
     float4x4 viewProjMatrix = renderPassParameters.ProjectionMatrix * renderPassParameters.ViewMatrix;

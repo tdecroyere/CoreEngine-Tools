@@ -111,6 +111,8 @@ namespace CoreEngineInteropGenerator
                     implementationType = implementationTypes[interfaceNode.Identifier.ToString()];
                 }
 
+                var functionNameList = new List<string>();
+
                 foreach (var member in interfaceNode.Members)
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
@@ -118,6 +120,17 @@ namespace CoreEngineInteropGenerator
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
                         var functionName = char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1);
+
+                        var functionNameOriginal = functionName;
+                        var currentIndex = 0;
+
+                        while (functionNameList.Contains(functionName))
+                        {
+                            functionName = functionNameOriginal + $"_{++currentIndex}";
+                        }
+
+                        functionNameList.Add(functionName);
+
                         var swiftReturnType = MapCSharpTypeToSwift(method.ReturnType.ToString(), true);
 
                         stringBuilder.Append($"func {functionName}Interop(context: UnsafeMutableRawPointer?");
@@ -172,7 +185,7 @@ namespace CoreEngineInteropGenerator
                             }
                         }
 
-                        stringBuilder.Append($"contextObject.{functionName}(");
+                        stringBuilder.Append($"contextObject.{functionNameOriginal}(");
 
                         currentParameterIndex = 0;
 
@@ -233,15 +246,31 @@ namespace CoreEngineInteropGenerator
                 stringBuilder.AppendLine($"func init{interfaceNode.Identifier.ToString().Substring(1)}(_ context: {implementationType}, _ service: inout {interfaceNode.Identifier.ToString().Substring(1)}) {{");
                 stringBuilder.AppendLine("    service.Context = Unmanaged.passUnretained(context).toOpaque()");
                 
+                functionNameList = new List<string>();
+
                 foreach (var member in interfaceNode.Members)
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
                     {
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
+                        var functionNameStruct = method.Identifier.ToString();
                         var functionName = char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1);
 
-                        stringBuilder.AppendLine($"    service.{method.Identifier} = {functionName}Interop");
+                        var functionNameOriginal = functionName;
+                        var functionNameStructOriginal = functionNameStruct;
+                        var currentIndex = 0;
+
+                        while (functionNameList.Contains(functionName))
+                        {
+                            ++currentIndex;
+                            functionName = functionNameOriginal + $"_{currentIndex}";
+                            functionNameStruct = functionNameStructOriginal + $"_{currentIndex}";
+                        }
+
+                        functionNameList.Add(functionName);
+
+                        stringBuilder.AppendLine($"    service.{functionNameStruct} = {functionName}Interop");
                     }
                 }
 

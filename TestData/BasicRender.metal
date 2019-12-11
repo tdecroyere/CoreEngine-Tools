@@ -28,8 +28,8 @@ struct ArgumentBuffer
 
 struct VertexInput
 {
-    float3 Position [[attribute(0)]];
-    float3 Normal   [[attribute(1)]];
+    float3 Position;
+    float3 Normal;
 };
 
 struct VertexOutput
@@ -38,10 +38,12 @@ struct VertexOutput
     float3 WorldNormal;
 };
 
-vertex VertexOutput VertexMain(VertexInput input                            [[stage_in]], 
+vertex VertexOutput VertexMain(const device VertexInput* vertexBuffer       [[buffer(0)]], 
                                const device ArgumentBuffer& argumentBuffer  [[buffer(1)]], 
+                               uint vertexId                                [[vertex_id]],
                                uint instanceId                              [[instance_id]])
 {
+    VertexInput input = vertexBuffer[vertexId];
     VertexOutput output = {};
 
     uint objectPropertyIndex = argumentBuffer.vertexShaderParameters[instanceId].objectPropertyIndex;

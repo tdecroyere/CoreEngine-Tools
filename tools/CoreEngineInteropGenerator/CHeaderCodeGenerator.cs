@@ -77,6 +77,8 @@ namespace CoreEngineInteropGenerator
             
             foreach (var interfaceNode in interfaces)
             {
+                var functionNameList = new List<string>();
+
                 foreach (var member in interfaceNode.Members)
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
@@ -84,6 +86,16 @@ namespace CoreEngineInteropGenerator
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
                         var functionName = method.Identifier.ToString();
+
+                        var functionNameOriginal = functionName;
+                        var currentIndex = 0;
+
+                        while (functionNameList.Contains(functionName))
+                        {
+                            functionName = functionNameOriginal + $"_{++currentIndex}";
+                        }
+
+                        functionNameList.Add(functionName);
 
                         stringBuilder.Append("typedef ");
                         stringBuilder.Append($"{MapCSharpTypeToC(method.ReturnType.ToString())} ");
@@ -128,6 +140,8 @@ namespace CoreEngineInteropGenerator
                 stringBuilder.AppendLine("{");
                 stringBuilder.AppendLine($"    void* Context;");
 
+                functionNameList = new List<string>();
+
                 foreach(var member in interfaceNode.Members)
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
@@ -135,6 +149,16 @@ namespace CoreEngineInteropGenerator
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
                         var functionName = method.Identifier.ToString();
+
+                        var functionNameOriginal = functionName;
+                        var currentIndex = 0;
+
+                        while (functionNameList.Contains(functionName))
+                        {
+                            functionName = functionNameOriginal + $"_{++currentIndex}";
+                        }
+
+                        functionNameList.Add(functionName);
 
                         stringBuilder.AppendLine($"    {functionName}Ptr {functionName};");
                     }

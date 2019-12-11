@@ -25,6 +25,7 @@ namespace CoreEngineInteropGenerator
             generatedCompilationUnit = generatedCompilationUnit.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Numerics")));
 
             var generatedNamespace = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName("CoreEngine.HostServices.Interop"));
+            var delegateNameList = new List<string>();
 
             foreach (var interfaceNode in interfaces)
             {
@@ -45,7 +46,18 @@ namespace CoreEngineInteropGenerator
                     {
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
-                        var delegateTypeName = $"{method.Identifier}Delegate";
+                        var delegateTypeName = $"{interfaceNode.Identifier.ToString().Substring(1)}{method.Identifier}Delegate";
+
+                        var delegateTypeNameOriginal = delegateTypeName;
+                        var currentIndex = 0;
+
+                        while (delegateNameList.Contains(delegateTypeName))
+                        {
+                            delegateTypeName = delegateTypeNameOriginal + $"_{++currentIndex}";
+                        }
+
+                        delegateNameList.Add(delegateTypeName);
+
                         var delegateVariableName = char.ToLowerInvariant(delegateTypeName[0]) + delegateTypeName.Substring(1);
 
                         // Generate delegate

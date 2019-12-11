@@ -84,14 +84,17 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     streamWriter.Write(meshData.Vertices.Count);
                     streamWriter.Write(meshData.Indices.Count);
                     
+                    // TODO: Currently we add a padding 0 to be aligned
                     foreach (var vertex in meshData.Vertices)
                     {
                         streamWriter.Write(vertex.Position.X);
                         streamWriter.Write(vertex.Position.Y);
                         streamWriter.Write(vertex.Position.Z);
+                        streamWriter.Write(0.0f);
                         streamWriter.Write(vertex.Normal.X);
                         streamWriter.Write(vertex.Normal.Y);
                         streamWriter.Write(vertex.Normal.Z);
+                        streamWriter.Write(0.0f);
                     }
 
                     foreach (var index in meshData.Indices)
