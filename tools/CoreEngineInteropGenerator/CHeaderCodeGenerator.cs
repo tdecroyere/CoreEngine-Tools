@@ -189,6 +189,11 @@ namespace CoreEngineInteropGenerator
                 result = "char*";
             }
 
+            if (result.EndsWith('?'))
+            {
+                result = $"Nullable{typeName}".TrimEnd('?');
+            }
+
             if (enumTypes.Contains(typeName))
             {
                 result = "enum " + result;
