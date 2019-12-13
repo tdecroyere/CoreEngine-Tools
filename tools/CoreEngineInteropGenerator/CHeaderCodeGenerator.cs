@@ -184,6 +184,11 @@ namespace CoreEngineInteropGenerator
                 result = "int";
             }
 
+            else if (typeName == "string" || typeName == "string?")
+            {
+                result = "char*";
+            }
+
             if (enumTypes.Contains(typeName))
             {
                 result = "enum " + result;
@@ -201,7 +206,7 @@ namespace CoreEngineInteropGenerator
         {
             var builtInTypes = new string[] 
             {
-                "void", "bool", "byte", "short", "ushort", "int", "uint", "float", "double", "char"
+                "void", "bool", "byte", "short", "ushort", "int", "uint", "float", "double", "char", "string", "string?"
             };
 
             return builtInTypes.Contains(typeName);

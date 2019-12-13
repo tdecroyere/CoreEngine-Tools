@@ -212,14 +212,29 @@ namespace CoreEngineInteropGenerator
 
                             else
                             {
-                                if (IsCastingNeededForSwiftType(swiftParameterTypeInterop))
+                                if (IsCastingNeededForSwiftType(swiftParameterTypeInterop) && swiftParameterType == "String?")
+                                {
+                                    stringBuilder.Append($"({parameter.Identifier} != nil) ? String(cString: ");
+                                } 
+                                
+                                else if (IsCastingNeededForSwiftType(swiftParameterTypeInterop))
                                 {
                                     stringBuilder.Append($"{swiftParameterType}(");
                                 }
                                 
                                 stringBuilder.Append($"{parameter.Identifier}");
 
-                                if (IsCastingNeededForSwiftType(swiftParameterTypeInterop))
+                                if (IsCastingNeededForSwiftType(swiftParameterTypeInterop) && swiftParameterType == "String?")
+                                {
+                                    stringBuilder.Append($"!) : nil");
+                                }
+
+                                else if (IsCastingNeededForSwiftType(swiftParameterTypeInterop) && swiftParameterType == "Bool")
+                                {
+                                    stringBuilder.Append($" == 1)");
+                                }
+
+                                else if (IsCastingNeededForSwiftType(swiftParameterTypeInterop))
                                 {
                                     stringBuilder.Append($")");
                                 }
@@ -303,12 +318,17 @@ namespace CoreEngineInteropGenerator
                 return isInteropCode ? "Int32" : "Bool";
             }
 
+            else if (typeName == "string" || typeName == "string?")
+            {
+                return isInteropCode ? "UnsafeMutablePointer<Int8>?" : "String?";
+            }
+
             return typeName;
         }
 
         private static bool IsCastingNeededForSwiftType(string typeName)
         {
-            return (typeName == "Int32" || typeName == "UInt32");
+            return (typeName == "Int32" || typeName == "UInt32" || typeName == "UnsafeMutablePointer<Int8>?");
         }
     }
 }
