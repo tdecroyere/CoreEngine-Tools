@@ -3,12 +3,6 @@
 
 using namespace metal;
 
-struct RenderPassParameters
-{
-    float4x4 ViewMatrix;
-    float4x4 ProjectionMatrix;
-};
-
 struct VertexInput
 {
     float3 Position;
@@ -21,14 +15,25 @@ struct VertexOutput
     float3 Color;
 };
 
-vertex VertexOutput VertexMain(const device VertexInput* vertexBuffer                  [[buffer(0)]], 
-                               const device RenderPassParameters& renderPassParameters [[buffer(1)]],
-                               uint vertexId                                           [[vertex_id]])
+struct RenderPassParameters
 {
-    VertexInput input = vertexBuffer[vertexId];
+    float4x4 ViewMatrix;
+    float4x4 ProjectionMatrix;
+};
+
+struct ShaderParameters
+{
+    const device VertexInput* VertexBuffer                  [[id(0)]];
+    const device RenderPassParameters& RenderPassParameters [[id(1)]];
+};
+
+vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
+                               const device ShaderParameters& parameters)
+{
+    VertexInput input = parameters.VertexBuffer[vertexId];
     VertexOutput output = {};
 
-    float4x4 viewProjMatrix = renderPassParameters.ProjectionMatrix * renderPassParameters.ViewMatrix;
+    float4x4 viewProjMatrix = parameters.RenderPassParameters.ProjectionMatrix * parameters.RenderPassParameters.ViewMatrix;
 
     output.Position = viewProjMatrix * float4(input.Position, 1.0);
     output.Color = input.Color;

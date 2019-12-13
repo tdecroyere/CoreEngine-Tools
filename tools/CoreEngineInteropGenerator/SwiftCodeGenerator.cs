@@ -119,7 +119,8 @@ namespace CoreEngineInteropGenerator
                     {
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
-                        var functionName = char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1);
+                        var functionNameContext = char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1);
+                        var functionName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1)}";
 
                         var functionNameOriginal = functionName;
                         var currentIndex = 0;
@@ -185,7 +186,7 @@ namespace CoreEngineInteropGenerator
                             }
                         }
 
-                        stringBuilder.Append($"contextObject.{functionNameOriginal}(");
+                        stringBuilder.Append($"contextObject.{functionNameContext}(");
 
                         currentParameterIndex = 0;
 
@@ -254,8 +255,8 @@ namespace CoreEngineInteropGenerator
                     {
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
-                        var functionNameStruct = method.Identifier.ToString();
-                        var functionName = char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1);
+                        var functionNameStruct = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier.ToString()}";
+                        var functionName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1)}";
 
                         var functionNameOriginal = functionName;
                         var functionNameStructOriginal = functionNameStruct;

@@ -85,7 +85,7 @@ namespace CoreEngineInteropGenerator
                     {
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
-                        var functionName = method.Identifier.ToString();
+                        var functionName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier.ToString()}";
 
                         var functionNameOriginal = functionName;
                         var currentIndex = 0;
@@ -148,7 +148,7 @@ namespace CoreEngineInteropGenerator
                     {
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
-                        var functionName = method.Identifier.ToString();
+                        var functionName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier.ToString()}";
 
                         var functionNameOriginal = functionName;
                         var currentIndex = 0;

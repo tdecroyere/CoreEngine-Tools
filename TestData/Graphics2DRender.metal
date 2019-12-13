@@ -3,17 +3,6 @@
 
 using namespace metal;
 
-struct RenderPassParameters
-{
-    float4x4 ProjectionMatrix;
-};
-
-struct RectangleSurface
-{
-    float4x4 WorldMatrix;
-    texture2d<float> Texture;
-};
-
 struct VertexInput
 {
     float2 Position;
@@ -27,17 +16,34 @@ struct VertexOutput
     uint InstanceId [[flat]];
 };
 
-vertex VertexOutput VertexMain(const device VertexInput* vertexBuffer                  [[buffer(0)]], 
-                               const device RenderPassParameters& renderPassParameters [[buffer(1)]],
-                               const device RectangleSurface* rectangleSurfaces        [[buffer(2)]],
-                               const uint vertexId                                     [[vertex_id]],
-                               const uint instanceId                                   [[instance_id]])
+struct RenderPassParameters
 {
-    VertexInput input = vertexBuffer[vertexId];
+    float4x4 ProjectionMatrix;
+};
+
+struct RectangleSurface
+{
+    float4x4 WorldMatrix;
+    int TextureIndex;
+};
+
+struct ShaderParameters
+{
+    const device VertexInput* VertexBuffer                  [[id(0)]];
+    const device RenderPassParameters& RenderPassParameters [[id(1)]];
+    const device RectangleSurface* RectangleSurfaces        [[id(2)]];
+    array<texture2d<float>, 100> SurfaceTextures            [[id(3)]];
+};
+
+vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
+                               const uint instanceId [[instance_id]],
+                               const device ShaderParameters& parameters)
+{
+    VertexInput input = parameters.VertexBuffer[vertexId];
     VertexOutput output = {};
 
-    float4x4 worldMatrix = rectangleSurfaces[instanceId].WorldMatrix;
-    float4x4 projectionMatrix = renderPassParameters.ProjectionMatrix;
+    float4x4 worldMatrix = parameters.RectangleSurfaces[instanceId].WorldMatrix;
+    float4x4 projectionMatrix = parameters.RenderPassParameters.ProjectionMatrix;
 
     output.Position = projectionMatrix * worldMatrix * float4(input.Position, 0.0, 1.0);
     output.TextureCoordinates = input.TextureCoordinates;
@@ -52,7 +58,7 @@ struct PixelOutput
 };
 
 fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
-                               const device RectangleSurface* rectangleSurfaces [[buffer(1)]])
+                               const device ShaderParameters& shaderParameters)
 {
     constexpr sampler texture_sampler(mag_filter::linear,
                                       min_filter::linear,
@@ -60,11 +66,11 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
                                        
     PixelOutput output = {};
 
-    texture2d<float> diffuseTexture = rectangleSurfaces[input.InstanceId].Texture;
+    int textureIndex = shaderParameters.RectangleSurfaces[input.InstanceId].TextureIndex;
+    texture2d<float> diffuseTexture = shaderParameters.SurfaceTextures[textureIndex];
 
     float4 textureColor = diffuseTexture.sample(texture_sampler, input.TextureCoordinates);
     output.Color = textureColor;
 
     return output; 
 }
-

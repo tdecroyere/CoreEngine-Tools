@@ -3,6 +3,18 @@
 
 using namespace metal;
 
+struct VertexInput
+{
+    float3 Position;
+    float3 Normal;
+};
+
+struct VertexOutput
+{
+    float4 Position [[position]];
+    float3 WorldNormal;
+};
+
 struct RenderPassParameters
 {
     float4x4 ViewMatrix;
@@ -19,37 +31,25 @@ struct VertexShaderParameters
     uint objectPropertyIndex;
 };
 
-struct ArgumentBuffer
+struct ShaderParameters
 {
-    const device RenderPassParameters* renderPassParameters;
-    const device ObjectProperties* objectProperties;
-    const device VertexShaderParameters* vertexShaderParameters;
+    const device VertexInput* VertexBuffer                  [[id(0)]];
+    const device RenderPassParameters& RenderPassParameters [[id(1)]];
+    const device ObjectProperties* ObjectProperties         [[id(2)]];
+    const device VertexShaderParameters* VertexShaderParameters [[id(3)]];
 };
 
-struct VertexInput
+vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
+                               const uint instanceId [[instance_id]],
+                               const device ShaderParameters& parameters)
 {
-    float3 Position;
-    float3 Normal;
-};
-
-struct VertexOutput
-{
-    float4 Position     [[position]];
-    float3 WorldNormal;
-};
-
-vertex VertexOutput VertexMain(const device VertexInput* vertexBuffer       [[buffer(0)]], 
-                               const device ArgumentBuffer& argumentBuffer  [[buffer(1)]], 
-                               uint vertexId                                [[vertex_id]],
-                               uint instanceId                              [[instance_id]])
-{
-    VertexInput input = vertexBuffer[vertexId];
+    VertexInput input = parameters.VertexBuffer[vertexId];
     VertexOutput output = {};
 
-    uint objectPropertyIndex = argumentBuffer.vertexShaderParameters[instanceId].objectPropertyIndex;
+    uint objectPropertyIndex = parameters.VertexShaderParameters[instanceId].objectPropertyIndex;
 
-    float4x4 worldMatrix = argumentBuffer.objectProperties[objectPropertyIndex].WorldMatrix;
-    float4x4 worldViewProjMatrix = (argumentBuffer.renderPassParameters->ProjectionMatrix * argumentBuffer.renderPassParameters->ViewMatrix) * worldMatrix;
+    float4x4 worldMatrix = parameters.ObjectProperties[objectPropertyIndex].WorldMatrix;
+    float4x4 worldViewProjMatrix = (parameters.RenderPassParameters.ProjectionMatrix * parameters.RenderPassParameters.ViewMatrix) * worldMatrix;
 
     output.Position = worldViewProjMatrix * float4(input.Position, 1.0);
     output.WorldNormal = normalize(worldMatrix * float4(input.Normal, 0.0)).xyz;

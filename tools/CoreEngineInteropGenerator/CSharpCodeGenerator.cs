@@ -46,7 +46,7 @@ namespace CoreEngineInteropGenerator
                     {
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
-                        var delegateTypeName = $"{interfaceNode.Identifier.ToString().Substring(1)}{method.Identifier}Delegate";
+                        var delegateTypeName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier}Delegate";
 
                         var delegateTypeNameOriginal = delegateTypeName;
                         var currentIndex = 0;
