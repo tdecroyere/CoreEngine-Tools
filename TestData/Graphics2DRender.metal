@@ -24,6 +24,8 @@ struct RenderPassParameters
 struct RectangleSurface
 {
     float4x4 WorldMatrix;
+    float2 TextureMinPoint;
+    float2 TextureMaxPoint;
     int TextureIndex;
 };
 
@@ -46,8 +48,30 @@ vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
     float4x4 projectionMatrix = parameters.RenderPassParameters.ProjectionMatrix;
 
     output.Position = projectionMatrix * worldMatrix * float4(input.Position, 0.0, 1.0);
-    output.TextureCoordinates = input.TextureCoordinates;
     output.InstanceId = instanceId;
+
+    float2 minPoint = parameters.RectangleSurfaces[instanceId].TextureMinPoint;
+    float2 maxPoint = parameters.RectangleSurfaces[instanceId].TextureMaxPoint;
+
+    if ((vertexId) % 4 == 0)
+    {
+        output.TextureCoordinates = float2(minPoint.x, minPoint.y);
+    }
+
+    else if ((vertexId) % 4 == 1)
+    {
+        output.TextureCoordinates = float2(maxPoint.x, minPoint.y);
+    }
+
+    else if ((vertexId) % 4 == 2)
+    {
+        output.TextureCoordinates = float2(minPoint.x, maxPoint.y);
+    }
+
+    else if ((vertexId) % 4 == 3)
+    {
+        output.TextureCoordinates = float2(maxPoint.x, maxPoint.y);
+    }
     
     return output;
 }

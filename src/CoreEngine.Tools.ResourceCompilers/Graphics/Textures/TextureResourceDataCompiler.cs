@@ -40,6 +40,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
                 throw new ArgumentNullException(nameof(context));
             }
 
+            // TODO: Use premultiplied alpha
+            
             var version = 1;
 
             var bitmap = SKBitmap.Decode(sourceData.ToArray());
