@@ -30,6 +30,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             var vertexDictionary = new Dictionary<MeshVertex, uint>();
             var vertexList = new List<Vector3>();
             var vertexNormalList = new List<Vector3>();
+            var vertexTextureCoordinatesList = new List<Vector3>();
 
             MeshSubObject? currentSubObject = null;
 
@@ -75,9 +76,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                         ParseVectorElement(vertexNormalList, line.AsSpan());
                     }
 
+                    else if (lineParts[0] == "vt")
+                    {
+                        ParseVectorElement(vertexTextureCoordinatesList, line.AsSpan());
+                    }
+
                     else if (lineParts[0] == "f")
                     {
-                        ParseFace(result, vertexDictionary, vertexList, vertexNormalList, line.AsSpan());
+                        ParseFace(result, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, line.AsSpan());
                     }
                 }
             }
@@ -103,14 +109,19 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             var stringLine = line.ToString();
             var lineParts = stringLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-            if (lineParts.Length < 4)
+            if (lineParts.Length < 3)
             {
                 throw new InvalidDataException("Invalid obj vertor line");
             }
 
             var x = float.Parse(lineParts[1], CultureInfo.InvariantCulture);
             var y = float.Parse(lineParts[2], CultureInfo.InvariantCulture);
-            var z = float.Parse(lineParts[3], CultureInfo.InvariantCulture);
+            var z = 0.0f;
+            
+            if (lineParts.Length > 3)
+            {
+                z = float.Parse(lineParts[3], CultureInfo.InvariantCulture);
+            }
 
             if (this.invertHandedness)
             {
@@ -120,7 +131,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             vectorList.Add(new Vector3(x, y , z));
         }
 
-        private void ParseFace(MeshData meshData, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, ReadOnlySpan<char> line)
+        private void ParseFace(MeshData meshData, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, List<Vector3> vertexTextureCoordinatesList, ReadOnlySpan<char> line)
         {
             // TODO: Wait for the Span<char> split method that is currenctly in dev
 
@@ -138,16 +149,16 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
             if (!this.invertHandedness)
             {
-                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
-                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element2);
-                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element1);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element2);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element3);
             }
 
             else 
             {
-                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
-                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
-                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element2);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element1);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element3);
+                AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element2);
             }
 
             if (lineParts.Length == 5)
@@ -156,23 +167,23 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                 if (!this.invertHandedness)
                 {
-                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
-                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
-                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element4);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element1);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element3);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element4);
                 }
 
                 else
                 {
-                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element1);
-                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element4);
-                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, element3);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element1);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element4);
+                    AddFaceElement(meshData, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, element3);
                 }
             }
         }
 
-        private static void AddFaceElement(MeshData meshData, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, FaceElement faceElement)
+        private static void AddFaceElement(MeshData meshData, Dictionary<MeshVertex, uint> vertexDictionary, List<Vector3> vertexList, List<Vector3> vertexNormalList, List<Vector3> vertexTextureCoordinatesList, FaceElement faceElement)
         {
-            var vertex = ConstructVertex(vertexList, vertexNormalList, faceElement);
+            var vertex = ConstructVertex(vertexList, vertexNormalList, vertexTextureCoordinatesList, faceElement);
 
             if (!vertexDictionary.ContainsKey(vertex))
             {
@@ -209,7 +220,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             return result;
         }
         
-        private static MeshVertex ConstructVertex(List<Vector3> vertexList, List<Vector3> vertexNormalList, FaceElement faceElement)
+        private static MeshVertex ConstructVertex(List<Vector3> vertexList, List<Vector3> vertexNormalList, List<Vector3> vertexTextureCoordinatesList, FaceElement faceElement)
         {
             var result = new MeshVertex();
 
@@ -221,6 +232,12 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             if (faceElement.NormalIndex != 0)
             {
                 result.Normal = vertexNormalList[(int)faceElement.NormalIndex - 1];
+            }
+
+            if (faceElement.TextureCoordinatesIndex != 0)
+            {
+                var textureCoordinates = vertexTextureCoordinatesList[(int)faceElement.TextureCoordinatesIndex - 1];
+                result.TextureCoordinates = new Vector2(textureCoordinates.X, textureCoordinates.Y);
             }
 
             return result;

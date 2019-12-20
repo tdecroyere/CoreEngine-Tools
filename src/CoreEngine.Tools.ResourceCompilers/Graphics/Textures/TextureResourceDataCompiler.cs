@@ -21,7 +21,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
         {
             get
             {
-                return new string[] { ".png" };
+                return new string[] { ".png", ".jpg" };
             }
         }
 

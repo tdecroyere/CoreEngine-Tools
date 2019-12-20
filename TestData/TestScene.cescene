@@ -10,10 +10,39 @@ Entities:
         RotationY: 90
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
+      - Component: 'CoreEngine.Graphics.Components.MaterialComponent'
+        MaterialResourceId: 'resource:/TestRedMaterial.material'
   - Entity: 'Teapot2'
     Components:
       - Component: 'CoreEngine.Components.TransformComponent'
         Position: [50, 100, 0]
+        RotationY: 45
+      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
+        MeshResourceId: 'resource:/teapot.mesh'
+      - Component: 'CoreEngine.Graphics.Components.MaterialComponent'
+        MaterialResourceId: 'resource:/TestTextureMaterial.material'
+  - Entity: 'Teapot3'
+    Components:
+      - Component: 'CoreEngine.Components.TransformComponent'
+        Position: [100, 100, 0]
+        RotationY: 45
+      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
+        MeshResourceId: 'resource:/teapot.mesh'
+      - Component: 'CoreEngine.Graphics.Components.MaterialComponent'
+        MaterialResourceId: 'resource:/TestWoodMaterial.material'
+  - Entity: 'Teapot4'
+    Components:
+      - Component: 'CoreEngine.Components.TransformComponent'
+        Position: [150, 100, 0]
+        RotationY: 45
+      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
+        MeshResourceId: 'resource:/teapot.mesh'
+      - Component: 'CoreEngine.Graphics.Components.MaterialComponent'
+        MaterialResourceId: 'resource:/TestTextureMaterial.material'
+  - Entity: 'Teapot5'
+    Components:
+      - Component: 'CoreEngine.Components.TransformComponent'
+        Position: [200, 100, 0]
         RotationY: 45
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'

@@ -32,7 +32,8 @@
         "type_traits": "cpp",
         "typeinfo": "cpp",
         "utility": "cpp",
-        "ceproj": "yaml"
+        "ceproj": "yaml",
+        "cematerial": "yaml"
     },
     "files.exclude": {
         "**/bin": true,

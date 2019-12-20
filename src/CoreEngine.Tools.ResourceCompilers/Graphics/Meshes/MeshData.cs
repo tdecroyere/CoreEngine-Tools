@@ -27,5 +27,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
     {
         public Vector3 Position { get; set; }
         public Vector3 Normal { get; set; }
+        public Vector2 TextureCoordinates { get; set; }
     }
 }
