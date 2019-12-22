@@ -34,18 +34,14 @@ namespace CoreEngine.Tools.ResourceCompilers
         }
 
         // TODO: Replace parameters by structs
-        public async Task<bool> CompileFileAsync(string inputPath, string output, CompilerContext context)
+        public async ValueTask<Memory<string>> CompileFileAsync(string inputPath, CompilerContext context)
         {
             if (context == null)
             {
                 throw new ArgumentNullException(nameof(context));
             }
             
-            var outputDirectory = Path.GetDirectoryName(output);
             var sourceFileExtension = Path.GetExtension(inputPath);
-            var destinationFileExtension = Path.GetExtension(output);
-
-            context.OutputDirectory = outputDirectory;
 
             if (!this.dataCompilers.ContainsKey(sourceFileExtension))
             {
@@ -53,11 +49,6 @@ namespace CoreEngine.Tools.ResourceCompilers
             }
 
             var dataCompiler = this.dataCompilers[sourceFileExtension];
-
-            if (destinationFileExtension != dataCompiler.DestinationExtension)
-            {
-                throw new ArgumentException($"Destination file extension: {destinationFileExtension} is not supported by the compiler");
-            }
 
             try
             {
@@ -67,18 +58,23 @@ namespace CoreEngine.Tools.ResourceCompilers
                 
                 if (outputResources.Length > 0)
                 {
-                    if (!Directory.Exists(outputDirectory))
+                    var result = new string[outputResources.Length];
+
+                    if (!Directory.Exists(context.OutputDirectory))
                     {
-                        Directory.CreateDirectory(outputDirectory);
+                        Directory.CreateDirectory(context.OutputDirectory);
                     }
 
                     for (var i = 0; i < outputResources.Length; i++)
                     {
                         var outputResource = outputResources.Span[i];
-                        await File.WriteAllBytesAsync(Path.Combine(outputDirectory, outputResource.Filename), outputResource.Data.ToArray());
+                        var outputPath = Path.Combine(context.OutputDirectory, outputResource.Filename);
+                        result[i] = outputPath;
+
+                        await File.WriteAllBytesAsync(outputPath, outputResource.Data.ToArray());
                     }
 
-                    return true;
+                    return result;
                 }
             }
 
@@ -87,7 +83,7 @@ namespace CoreEngine.Tools.ResourceCompilers
                 Logger.WriteMessage($"Error: {e.ToString()}", LogMessageTypes.Error);
             }
 
-            return false;
+            return new Memory<string>();
         }
 
         private void AddInternalDataCompilers()

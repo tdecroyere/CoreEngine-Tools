@@ -75,13 +75,23 @@ namespace CoreEngine.Compiler
             foreach (var sourceFile in sourceFiles)
             {
                 var hasFileChanged = fileTracker.HasFileChanged(sourceFile) || searchPattern != null;
+                var destinationFiles = fileTracker.GetDestinationFiles(sourceFile);
 
                 var sourceFileAbsoluteDirectory = ConstructSourceFileAbsolutDirectory(inputDirectory, sourceFile);
-                var destinationPath = ConstructDestinationPath(sourceFileAbsoluteDirectory, sourceFile, outputDirectory);
+                var destinationPath = Path.Combine(outputDirectory, sourceFileAbsoluteDirectory);
 
-                remainingDestinationFiles.Remove(destinationPath);
+                var destinationFilesExist = true;
 
-                if ((!isWatchMode && (hasFileChanged || !File.Exists(destinationPath))) || (isWatchMode && hasFileChanged))
+                foreach (var destinationFile in destinationFiles)
+                {
+                    if (!File.Exists(destinationFile))
+                    {
+                        destinationFilesExist = false;
+                        break;
+                    }
+                }
+
+                if (hasFileChanged || !destinationFilesExist)
                 {
                     if (isWatchMode)
                     {
@@ -89,10 +99,24 @@ namespace CoreEngine.Compiler
                     }
                     
                     var result = await CompileSourceFile(sourceFileAbsoluteDirectory, sourceFile, destinationPath);
-                    
-                    if (result)
+                    var resultDestinationFiles = new string[result.Length];
+
+                    for (var i = 0; i < result.Span.Length; i++)
                     {
-                        compiledFilesCount++;
+                        var destinationFile = Path.Combine(destinationPath, result.Span[i]);
+                        resultDestinationFiles[i] = destinationFile;
+                        remainingDestinationFiles.Remove(destinationFile);
+                    }
+
+                    fileTracker.AddDestinationFiles(sourceFile, resultDestinationFiles);
+                    compiledFilesCount += result.Length;
+                }
+
+                else 
+                {
+                    foreach (var destinationFile in destinationFiles)
+                    {
+                        remainingDestinationFiles.Remove(destinationFile);
                     }
                 }
             }
@@ -176,15 +200,7 @@ namespace CoreEngine.Compiler
             return sourceFileAbsoluteDirectory;
         }
 
-        private string ConstructDestinationPath(string sourceFileAbsoluteDirectory, string sourceFile, string outputDirectory)
-        {
-            var destinationFileExtension = this.resourceCompiler.GetDestinationFileExtension(Path.GetExtension(sourceFile));
-            var destinationFileName = $"{Path.GetFileNameWithoutExtension(sourceFile)}{destinationFileExtension}";
-            var destinationPath = Path.Combine(outputDirectory, sourceFileAbsoluteDirectory, destinationFileName);
-            return destinationPath;
-        }
-
-        private async Task<bool> CompileSourceFile(string sourceFileAbsoluteDirectory, string sourceFile, string destinationPath)
+        private async ValueTask<Memory<string>> CompileSourceFile(string sourceFileAbsoluteDirectory, string sourceFile, string outputDirectory)
         {
             Logger.BeginAction($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'");
             
@@ -201,13 +217,13 @@ namespace CoreEngine.Compiler
                 targetPlatform = "linux";
             }
 
-            var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile));
+            var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile), outputDirectory);
             
             try
             {
-                var result = await this.resourceCompiler.CompileFileAsync(sourceFile, destinationPath, resourceCompilerContext);
+                var result = await this.resourceCompiler.CompileFileAsync(sourceFile, resourceCompilerContext);
 
-                if (result)
+                if (result.Length > 0)
                 {
                     Logger.EndAction();
                 }
@@ -223,7 +239,7 @@ namespace CoreEngine.Compiler
             catch
             {
                 Logger.EndActionError();
-                return false;
+                return new Memory<string>();
             }
         }
 

@@ -9,10 +9,12 @@ namespace CoreEngine.Compiler
     public class FileTracker
     {
         private Dictionary<string, long> fileTracker;
+        private Dictionary<string, string[]> destinationFiles;
 
         public FileTracker()
         {
             this.fileTracker = new Dictionary<string, long>();
+            this.destinationFiles = new Dictionary<string, string[]>();
         }
 
         public bool HasFileChanged(string path)
@@ -37,6 +39,26 @@ namespace CoreEngine.Compiler
             return true;
         }
 
+        public void AddDestinationFiles(string path, string[] destinationFiles)
+        {
+            if (this.destinationFiles.ContainsKey(path))
+            {
+                this.destinationFiles.Remove(path);
+            }
+
+            this.destinationFiles.Add(path, destinationFiles);
+        }
+
+        public string[] GetDestinationFiles(string path)
+        {
+            if (this.destinationFiles.ContainsKey(path))
+            {
+                return this.destinationFiles[path];
+            }
+
+            return Array.Empty<string>();
+        }
+
         public void ReadFile(string path)
         {
             if (File.Exists(path))
@@ -55,6 +77,23 @@ namespace CoreEngine.Compiler
 
                     this.fileTracker.Add(key, value);
                 }
+
+                count = reader.ReadInt32();
+
+                for (var i = 0; i < count; i++)
+                {
+                    var key = reader.ReadString();
+
+                    var valueCount = reader.ReadInt32();
+                    var values = new string[valueCount];
+
+                    for (var j = 0; j < valueCount; j++)
+                    {
+                        values[j] = reader.ReadString();
+                    }
+
+                    this.destinationFiles.Add(key, values);
+                }
             }
         }
 
@@ -69,6 +108,19 @@ namespace CoreEngine.Compiler
             {
                 writer.Write(item.Key);
                 writer.Write(item.Value);
+            }
+
+            writer.Write(this.destinationFiles.Count);
+
+            foreach (var item in this.destinationFiles)
+            {
+                writer.Write(item.Key);
+                writer.Write(item.Value.Length);
+
+                foreach (var value in item.Value)
+                {
+                    writer.Write(value);
+                }
             }
 
             writer.Flush();

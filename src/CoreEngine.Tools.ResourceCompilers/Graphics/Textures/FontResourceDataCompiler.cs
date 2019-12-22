@@ -54,7 +54,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
             }
 
             var version = 1;
-            var glyphCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/\\\"'#&!., :$<>";
+            var glyphCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/\\\"'#&!., :$<>[]()";
 
             using var fontManager = SKFontManager.CreateDefault();
 
@@ -73,7 +73,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
             canvas.Clear(SKColors.Transparent);
 
             using var paint1 = new SKPaint {
-                TextSize = 40.0f,
+                TextSize = 34.0f,
                 IsAntialias = true,
                 //LcdRenderText = true,
                 Color = SKColors.White,
@@ -95,7 +95,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
                 if (currentXPosition + glyphWidths[i] + 10 > textureSize)
                 {
                     currentXPosition = 0;
-                    currentYPosition += fontMetrics.Descent - fontMetrics.Ascent;
+                    currentYPosition += fontMetrics.Descent - fontMetrics.Ascent + 10;
                 }
 
                 glyphInfos[i] = new GlyphInfo
