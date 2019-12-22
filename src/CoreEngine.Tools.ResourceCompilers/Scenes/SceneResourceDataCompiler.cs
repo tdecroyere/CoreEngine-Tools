@@ -44,7 +44,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
             }
         }
 
-        public override Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
+        public override Task<ReadOnlyMemory<ResourceEntry>> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             if (context == null)
             {
@@ -128,8 +128,10 @@ namespace CoreEngine.Tools.ResourceCompilers.Scenes
             streamWriter.Flush();
             destinationMemoryStream.Flush();
 
-            var result = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
-            return Task.FromResult<ReadOnlyMemory<byte>?>(result);
+            var resourceData = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+            var resourceEntry = new ResourceEntry($"{Path.GetFileNameWithoutExtension(context.SourceFilename)}{this.DestinationExtension}", resourceData);
+
+            return Task.FromResult(new ReadOnlyMemory<ResourceEntry>(new ResourceEntry[] { resourceEntry }));
         }
 
         private SceneDescription ParseYamlFile(ReadOnlyMemory<byte> sourceData)

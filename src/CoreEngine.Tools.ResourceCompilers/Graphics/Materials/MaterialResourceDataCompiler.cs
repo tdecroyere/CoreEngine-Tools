@@ -45,7 +45,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
         {
             get
             {
-                return new string[] { ".cematerial" };
+                return new string[] { ".cematerial", ".mtl" };
             }
         }
 
@@ -57,7 +57,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
             }
         }
 
-        public override Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
+        public override Task<ReadOnlyMemory<ResourceEntry>> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             if (context == null)
             {
@@ -66,156 +66,107 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
 
             var version = 1;
 
-            var material = ParseYamlFile(sourceData);
-            Logger.WriteMessage($"Material Property Count: {material.Properties.Count}", LogMessageTypes.Debug);
+            IMaterialDataReader materialDataReader;
 
-            var destinationMemoryStream = new MemoryStream();
-
-            using var streamWriter = new BinaryWriter(destinationMemoryStream);
-            streamWriter.Write(new char[] { 'M', 'A', 'T', 'E', 'R', 'I', 'A', 'L'});
-            streamWriter.Write(version);
-
-            Logger.BeginAction("Writing Material data");
-            var textureResourceList = new List<TextureEntry>();
-            
-            var materialDataMemoryStream = new MemoryStream();
-            using var materialDataStreamWriter = new BinaryWriter(materialDataMemoryStream);
-
-            foreach (var property in material.Properties)
+            if (Path.GetExtension(context.SourceFilename) == ".mtl")
             {
-                if (property.Value.GetType() == typeof(string))
-                {
-                    var stringValue = (string)property.Value;
-                    
-                    if (stringValue != string.Empty)
-                    {
-                        textureResourceList.Add(new TextureEntry((int)materialDataStreamWriter.BaseStream.Position, stringValue));
-                    }
-
-                    materialDataStreamWriter.Write(-1);
-                }
-
-                else if (property.Value.GetType() == typeof(bool))
-                {
-                    materialDataStreamWriter.Write((bool)property.Value);
-                }
-
-                else if (property.Value.GetType() == typeof(float))
-                {
-                    materialDataStreamWriter.Write((float)property.Value);
-                }
-
-                else if (property.Value.GetType() == typeof(float[]))
-                {
-                    var floatArray = (float[])property.Value;
-
-                    foreach (var floatValue in floatArray)
-                    {
-                        materialDataStreamWriter.Write(floatValue);
-                    }
-                }
+                materialDataReader = new ObjMaterialDataReader();
             }
 
-            var materialData = materialDataMemoryStream.ToArray();
-            
-            streamWriter.Write(textureResourceList.Count);
-            
-            for (var i = 0; i < textureResourceList.Count; i++)
+            else
             {
-                var textureResource = textureResourceList[i];
-
-                streamWriter.Write(textureResource.Offset);
-                streamWriter.Write(textureResource.ResourcePath);
-
-                var textureIndex = i + 1;
-
-                MemoryMarshal.Write(materialData.AsSpan().Slice(textureResource.Offset), ref textureIndex);
+                materialDataReader = new CoreEngineMaterialDataReader(Path.GetFileNameWithoutExtension(context.SourceFilename));
             }
 
-            streamWriter.Write(materialData.Length);
-            streamWriter.Write(materialData);
+            var materials = materialDataReader.Read(sourceData.Span, context);
+            Logger.WriteMessage($"Materials Count: {materials.Length}");
 
-            Logger.EndAction();
-            
-            streamWriter.Flush();
-            destinationMemoryStream.Flush();
+            var resourceEntries = new ResourceEntry[materials.Length];
 
-            var result = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
-            return Task.FromResult<ReadOnlyMemory<byte>?>(result);
-        }
-
-        private MaterialDescription ParseYamlFile(ReadOnlyMemory<byte> sourceData)
-        {
-            var materialDescription = new MaterialDescription();
-            using var reader = new StreamReader(new MemoryStream(sourceData.ToArray()));
-            var yaml = new YamlStream();
-            yaml.Load(reader);
-
-            var rootNode = (YamlMappingNode)yaml.Documents[0].RootNode;
-
-            foreach (var node in rootNode.Children)
+            for (var i = 0; i < materials.Length; i++)
             {
-                if (((YamlScalarNode)node.Key).Value == "Material")
+                var material = materials[i];
+                
+                Logger.WriteMessage($"Material Property Count: {material.Properties.Count}", LogMessageTypes.Debug);
+
+                var destinationMemoryStream = new MemoryStream();
+
+                using var streamWriter = new BinaryWriter(destinationMemoryStream);
+                streamWriter.Write(new char[] { 'M', 'A', 'T', 'E', 'R', 'I', 'A', 'L'});
+                streamWriter.Write(version);
+
+                Logger.BeginAction("Writing Material data");
+                var textureResourceList = new List<TextureEntry>();
+                
+                var materialDataMemoryStream = new MemoryStream();
+                using var materialDataStreamWriter = new BinaryWriter(materialDataMemoryStream);
+
+                foreach (var property in material.Properties)
                 {
-                    ReadProperties(materialDescription, ((YamlSequenceNode)node.Value).Children.ToArray());
-                }
-            }
-
-            return materialDescription;
-        }
-
-        private static void ReadProperties(MaterialDescription materialDescription, YamlNode[] materialData)
-        {
-            foreach (var rootNode in materialData)
-            {
-                var children = ((YamlMappingNode)rootNode).Children.ToArray();
-
-                foreach (var node in children)
-                {
-                    var nodeKey = ((YamlScalarNode)node.Key).Value;
-                    Logger.WriteMessage($"{node.Key} - {node.Value} ({node.Value.NodeType})", LogMessageTypes.Debug);
-
-                    if (node.Value.NodeType == YamlNodeType.Scalar)
+                    if (property.Value.GetType() == typeof(string))
                     {
-                        var scalarNode = (YamlScalarNode)node.Value;
-
-                        Logger.WriteMessage($"Scalar node style: {scalarNode.Style}");
-
-                        if (scalarNode.Style == ScalarStyle.Plain)
-                        {
-                            if (scalarNode.Value == "true" || scalarNode.Value == "false")
-                            {
-                                var value = bool.Parse(scalarNode.Value);
-                                materialDescription.Properties.Add(new MaterialProperty(nodeKey.ToString(), value));
-                            }
-
-                            else
-                            {
-                                var value = float.Parse(scalarNode.Value, CultureInfo.InvariantCulture);
-                                materialDescription.Properties.Add(new MaterialProperty(nodeKey.ToString(), value));
-                            }
-                        }
-
-                        else if (scalarNode.Style == ScalarStyle.SingleQuoted)
-                        {
-                            materialDescription.Properties.Add(new MaterialProperty(nodeKey.ToString(), scalarNode.Value));
-                        }
-                    }
-
-                    else if (node.Value.NodeType == YamlNodeType.Sequence)
-                    {
-                        var sequenceNode = (YamlSequenceNode)node.Value;
-                        var arrayValue = sequenceNode.Select(x => float.Parse(((YamlScalarNode)x).Value, CultureInfo.InvariantCulture)).ToArray();
+                        var stringValue = (string)property.Value;
                         
-                        materialDescription.Properties.Add(new MaterialProperty(nodeKey.ToString(), arrayValue));
+                        if (!string.IsNullOrEmpty(stringValue))
+                        {
+                            textureResourceList.Add(new TextureEntry((int)materialDataStreamWriter.BaseStream.Position, stringValue));
+                        }
+
+                        materialDataStreamWriter.Write(-1);
                     }
 
-                    else
+                    else if (property.Value.GetType() == typeof(bool))
                     {
-                        Logger.WriteMessage("Warning: Unsupported yaml node type.", LogMessageTypes.Warning);
+                        materialDataStreamWriter.Write((bool)property.Value);
+                    }
+
+                    else if (property.Value.GetType() == typeof(float))
+                    {
+                        materialDataStreamWriter.Write((float)property.Value);
+                    }
+
+                    else if (property.Value.GetType() == typeof(float[]))
+                    {
+                        var floatArray = (float[])property.Value;
+
+                        foreach (var floatValue in floatArray)
+                        {
+                            materialDataStreamWriter.Write(floatValue);
+                        }
                     }
                 }
+
+                var materialData = materialDataMemoryStream.ToArray();
+                
+                streamWriter.Write(textureResourceList.Count);
+                
+                for (var j = 0; j < textureResourceList.Count; j++)
+                {
+                    var textureResource = textureResourceList[j];
+
+                    streamWriter.Write(textureResource.Offset);
+                    streamWriter.Write(textureResource.ResourcePath);
+
+                    var textureIndex = j + 1;
+
+                    MemoryMarshal.Write(materialData.AsSpan().Slice(textureResource.Offset), ref textureIndex);
+                }
+
+                streamWriter.Write(materialData.Length);
+                streamWriter.Write(materialData);
+
+                Logger.EndAction();
+                
+                streamWriter.Flush();
+                destinationMemoryStream.Flush();
+
+                var resourceData = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                var resourceEntry = new ResourceEntry($"{Path.GetFileNameWithoutExtension(material.Name)}{this.DestinationExtension}", resourceData);
+
+                resourceEntries[i] = resourceEntry;
             }
+
+            return Task.FromResult<ReadOnlyMemory<ResourceEntry>>(resourceEntries);
         }
     }
 }

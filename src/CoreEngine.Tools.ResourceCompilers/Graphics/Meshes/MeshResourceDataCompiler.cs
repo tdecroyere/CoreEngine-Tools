@@ -32,7 +32,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             }
         }
 
-        public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
+        public override async Task<ReadOnlyMemory<ResourceEntry>> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             if (context == null)
             {
@@ -111,8 +111,16 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     foreach (var subObject in meshData.MeshSubObjects)
                     {
                         // TODO: Replace that real material path
-                        streamWriter.Write("/Materials/TestMaterial.material");
-                        
+                        if (string.IsNullOrEmpty(subObject.MaterialPath))
+                        {
+                            streamWriter.Write($"");
+                        }
+
+                        else
+                        {
+                            streamWriter.Write($"{subObject.MaterialPath}.material");
+                        }
+
                         streamWriter.Write(subObject.StartIndex);
                         streamWriter.Write(subObject.IndexCount);
                         streamWriter.Write(subObject.BoundingBox.MinPoint.X);
@@ -126,7 +134,10 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     streamWriter.Flush();
 
                     destinationMemoryStream.Flush();
-                    return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                    var resourceData = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                    var resourceEntry = new ResourceEntry($"{Path.GetFileNameWithoutExtension(context.SourceFilename)}{this.DestinationExtension}", resourceData);
+
+                    return new ReadOnlyMemory<ResourceEntry>(new ResourceEntry[] { resourceEntry });
                 }
             }
 

@@ -16,6 +16,12 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
     
     public class MaterialDescription
     {
+        public MaterialDescription(string name)
+        {
+            this.Name = name;
+        }
+        
+        public string Name { get; }
         public IList<MaterialProperty> Properties { get; } = new List<MaterialProperty>();
     }
 }

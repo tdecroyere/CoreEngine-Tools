@@ -33,7 +33,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
             }
         }
 
-        public override Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
+        public override Task<ReadOnlyMemory<ResourceEntry>> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             if (context == null)
             {
@@ -45,8 +45,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
             var version = 1;
 
             var bitmap = SKBitmap.Decode(sourceData.ToArray());
-            var bitmapData = bitmap.Pixels; // TODO: Use the pixel span method
-            var imageDataSize = 4 * bitmap.Width * bitmap.Height;
             
             Logger.WriteMessage($"Texture compiler (Width: {bitmap.Width}, Height: {bitmap.Height})");
 
@@ -59,20 +57,62 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Textures
             streamWriter.Write(bitmap.Height);
             // TODO: Write format
             // TODO: Write mips info
+
+            var mipLevels = (int)MathF.Floor(MathF.Log2(MathF.Max(bitmap.Width, bitmap.Height))) + 1;
+            Logger.WriteMessage($"Mip Levels: {mipLevels}");
+            streamWriter.Write(mipLevels);
+
+            var bitmapData = bitmap.Pixels;
+            var imageDataSize = 4 * bitmap.Width * bitmap.Height;
+
             streamWriter.Write(imageDataSize);
             
-            for (var i = 0; i < bitmapData.Length; i++)
+            for (var j = 0; j < bitmapData.Length; j++)
             {
-                streamWriter.Write(bitmapData[i].Red);
-                streamWriter.Write(bitmapData[i].Green);
-                streamWriter.Write(bitmapData[i].Blue);
-                streamWriter.Write(bitmapData[i].Alpha);
+                streamWriter.Write(bitmapData[j].Red);
+                streamWriter.Write(bitmapData[j].Green);
+                streamWriter.Write(bitmapData[j].Blue);
+                streamWriter.Write(bitmapData[j].Alpha);
+            }
+
+            var textureWidth = bitmap.Width;
+            var textureHeight = bitmap.Height;
+
+            using var paint1 = new SKPaint {
+                IsAntialias = true,
+                FilterQuality = SKFilterQuality.High,
+            };
+
+            for (var i = 1; i < mipLevels; i++)
+            {
+                textureWidth = (textureWidth > 1) ? textureWidth / 2 : 1;
+                textureHeight = (textureHeight > 1) ? textureHeight / 2 : 1;
+                imageDataSize = 4 * textureWidth * textureHeight;
+
+                using var destinationBitmap = new SKBitmap(textureWidth, textureHeight, SKImageInfo.PlatformColorType, SKAlphaType.Opaque);
+                using var canvas = new SKCanvas(destinationBitmap);
+                canvas.Clear(SKColors.Transparent);
+                canvas.DrawBitmap(bitmap, new SKRect(0, 0, textureWidth, textureHeight), paint1);
+                bitmapData = destinationBitmap.Pixels; // TODO: Use the pixel span method
+
+                streamWriter.Write(imageDataSize);
+                
+                for (var j = 0; j < bitmapData.Length; j++)
+                {
+                    streamWriter.Write(bitmapData[j].Red);
+                    streamWriter.Write(bitmapData[j].Green);
+                    streamWriter.Write(bitmapData[j].Blue);
+                    streamWriter.Write(bitmapData[j].Alpha);
+                }
             }
 
             streamWriter.Flush();
-
             destinationMemoryStream.Flush();
-            return Task.FromResult((ReadOnlyMemory<byte>?)new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length));
+
+            var resourceData = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+            var resourceEntry = new ResourceEntry($"{Path.GetFileNameWithoutExtension(context.SourceFilename)}{this.DestinationExtension}", resourceData);
+
+            return Task.FromResult(new ReadOnlyMemory<ResourceEntry>(new ResourceEntry[] { resourceEntry }));
         }
     }
 }

@@ -94,6 +94,12 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
     texture2d<float> diffuseTexture = shaderParameters.SurfaceTextures[textureIndex];
 
     float4 textureColor = diffuseTexture.sample(texture_sampler, input.TextureCoordinates);
+
+    if (textureColor.a == 0)
+    {
+        discard_fragment();
+    }
+    
     output.Color = textureColor;
 
     return output; 

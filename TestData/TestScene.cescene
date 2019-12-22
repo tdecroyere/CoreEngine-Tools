@@ -49,7 +49,7 @@ Entities:
   - Entity: 'TestEntity2'
     Components:
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
-        MeshResourceId: 'resource:/sponza.mesh'
+        MeshResourceId: 'resource:/Sponza/sponza.mesh'
       - Component: 'CoreEngine.Components.TransformComponent'
   # - Entity: 'Maison'
   #   Components:

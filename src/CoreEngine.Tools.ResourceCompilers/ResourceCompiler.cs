@@ -36,9 +36,16 @@ namespace CoreEngine.Tools.ResourceCompilers
         // TODO: Replace parameters by structs
         public async Task<bool> CompileFileAsync(string inputPath, string output, CompilerContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+            
             var outputDirectory = Path.GetDirectoryName(output);
             var sourceFileExtension = Path.GetExtension(inputPath);
             var destinationFileExtension = Path.GetExtension(output);
+
+            context.OutputDirectory = outputDirectory;
 
             if (!this.dataCompilers.ContainsKey(sourceFileExtension))
             {
@@ -56,16 +63,21 @@ namespace CoreEngine.Tools.ResourceCompilers
             {
                 // TODO: Find a way to avoid copy data when using FileStream?
                 var inputData = new ReadOnlyMemory<byte>(await File.ReadAllBytesAsync(inputPath));
-                var outputData = await dataCompiler.CompileAsync(inputData, context);
+                var outputResources = await dataCompiler.CompileAsync(inputData, context);
                 
-                if (outputData != null)
+                if (outputResources.Length > 0)
                 {
                     if (!Directory.Exists(outputDirectory))
                     {
                         Directory.CreateDirectory(outputDirectory);
                     }
 
-                    await File.WriteAllBytesAsync(output, outputData.Value.ToArray());
+                    for (var i = 0; i < outputResources.Length; i++)
+                    {
+                        var outputResource = outputResources.Span[i];
+                        await File.WriteAllBytesAsync(Path.Combine(outputDirectory, outputResource.Filename), outputResource.Data.ToArray());
+                    }
+
                     return true;
                 }
             }

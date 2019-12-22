@@ -133,6 +133,7 @@ kernel void DrawMeshInstances(uint geometryInstanceIndex [[thread_position_in_gr
             commandList.set_fragment_buffer(materialData, 0);
             commandList.set_fragment_buffer(&materialTextureOffset, 1);
             commandList.set_fragment_buffer(&parameters, 2);
+            commandList.set_fragment_buffer(&geometryInstance, 3);
         }
 
         commandList.draw_indexed_primitives(primitive_type::triangle, geometryInstance.IndexCount, indexBuffer, 1, 0, geometryInstanceIndex);

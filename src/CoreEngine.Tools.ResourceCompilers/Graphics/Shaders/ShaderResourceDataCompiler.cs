@@ -32,7 +32,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             }
         }
 
-        public override async Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
+        public override async Task<ReadOnlyMemory<ResourceEntry>> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context)
         {
             if (context == null)
             {
@@ -66,7 +66,10 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 streamWriter.Flush();
 
                 destinationMemoryStream.Flush();
-                return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                var resourceData = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+                var resourceEntry = new ResourceEntry($"{Path.GetFileNameWithoutExtension(context.SourceFilename)}{this.DestinationExtension}", resourceData);
+
+                return new ReadOnlyMemory<ResourceEntry>(new ResourceEntry[] { resourceEntry });
             }
 
             return null;

@@ -22,6 +22,14 @@ namespace CoreEngine.Tools.ResourceCompilers
             get;
         }
 
-        public abstract Task<ReadOnlyMemory<byte>?> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context);
+        public virtual string? MultipleOutputDirectory
+        {
+            get
+            {
+                return null;
+            }
+        }
+
+        public abstract Task<ReadOnlyMemory<ResourceEntry>> CompileAsync(ReadOnlyMemory<byte> sourceData, CompilerContext context);
     }
 }

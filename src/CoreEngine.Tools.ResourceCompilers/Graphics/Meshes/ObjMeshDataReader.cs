@@ -85,6 +85,12 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     {
                         ParseFace(result, vertexDictionary, vertexList, vertexNormalList, vertexTextureCoordinatesList, line.AsSpan());
                     }
+
+                    else if (currentSubObject != null && lineParts[0] == "usemtl")
+                    {
+                        currentSubObject.MaterialPath = lineParts[1];
+                        Logger.WriteMessage($"Material: {currentSubObject.MaterialPath}");
+                    }
                 }
             }
 
@@ -237,7 +243,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             if (faceElement.TextureCoordinatesIndex != 0)
             {
                 var textureCoordinates = vertexTextureCoordinatesList[(int)faceElement.TextureCoordinatesIndex - 1];
-                result.TextureCoordinates = new Vector2(textureCoordinates.X, textureCoordinates.Y);
+                result.TextureCoordinates = new Vector2(textureCoordinates.X, -textureCoordinates.Y);
             }
 
             return result;

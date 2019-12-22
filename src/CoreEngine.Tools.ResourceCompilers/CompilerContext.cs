@@ -20,5 +20,10 @@ namespace CoreEngine.Tools.ResourceCompilers
             get;
         }
 
+        public string? OutputDirectory
+        {
+            get;
+            set;
+        }
     }
 }
