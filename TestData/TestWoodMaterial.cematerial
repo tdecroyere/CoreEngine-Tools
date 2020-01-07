@@ -1,4 +1,6 @@
 Material:
-  - DiffuseColor: [0, 1, 0, 1]
-  - DiffuseTexture: 'resource:/wood.texture'
-  - NormalTexture: ''
+  IsTransparent: true
+  Properties:
+    - DiffuseColor: [0, 1, 0, 1]
+    - DiffuseTexture: 'resource:/wood.texture'
+    - NormalTexture: ''

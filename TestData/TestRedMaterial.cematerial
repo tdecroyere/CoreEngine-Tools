@@ -1,4 +1,6 @@
 Material:
-  - DiffuseColor: [1, 0.1, 0.1, 1]
-  - DiffuseTexture: ''
-  - NormalTexture: ''
+  IsTransparent: true
+  Properties:
+    - DiffuseColor: [1, 0.1, 0.1, 0.5]
+    - DiffuseTexture: ''
+    - NormalTexture: ''

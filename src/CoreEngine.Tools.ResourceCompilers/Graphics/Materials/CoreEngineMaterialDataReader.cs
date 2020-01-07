@@ -37,7 +37,18 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
             {
                 if (((YamlScalarNode)node.Key).Value == "Material")
                 {
-                    ReadProperties(materialDescription, ((YamlSequenceNode)node.Value).Children.ToArray());
+                    foreach (var subNode in ((YamlMappingNode)node.Value).Children)
+                    {
+                        if (((YamlScalarNode)subNode.Key).Value == "Properties")
+                        {
+                            ReadProperties(materialDescription, ((YamlSequenceNode)subNode.Value).Children.ToArray());
+                        }
+
+                        else if (subNode.Key.ToString() == "IsTransparent")
+                        {
+                            materialDescription.IsTransparent = bool.Parse(((YamlScalarNode)subNode.Value).Value);
+                        }
+                    }
                 }
             }
 

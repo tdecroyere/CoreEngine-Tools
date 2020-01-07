@@ -38,6 +38,7 @@ struct GeometryInstance
     int StartIndex;
     int IndexCount;
     int MaterialIndex;
+    int IsTransparent;
     float4x4 WorldMatrix;
     BoundingBox WorldBoundingBox;
 };
@@ -61,12 +62,12 @@ struct ShaderParameters
     const device SceneProperties& SceneProperties [[id(0)]];
     const device GeometryPacket* GeometryPackets [[id(1)]];
     const device GeometryInstance* GeometryInstances [[id(2)]];
-    command_buffer CommandBuffer [[id(3)]];
-    const array<const device VertexInput*, 10000> VertexBuffers [[id(4)]];
-    const array<const device uint*, 10000> IndexBuffers [[id(10004)]];
-    const array<const device void*, 10000> MaterialData [[id(20004)]];
-    const array<texture2d<float>, 10000> MaterialTextures [[id(30004)]];
-    const device int* MaterialTextureOffsets [[id(40004)]];
+    const array<const device VertexInput*, 10000> VertexBuffers [[id(3)]];
+    const array<const device uint*, 10000> IndexBuffers [[id(10003)]];
+    const array<const device void*, 10000> MaterialData [[id(20003)]];
+    const array<texture2d<float>, 10000> MaterialTextures [[id(30003)]];
+    const device int* MaterialTextureOffsets [[id(40003)]];
+    command_buffer OpaqueCommandBuffer [[id(40004)]];
 };
 
 bool Intersect(float4 plane, BoundingBox box)
@@ -109,7 +110,7 @@ kernel void DrawMeshInstances(uint geometryInstanceIndex [[thread_position_in_gr
 
     if (Intersect(cameraFrustum, worldBoundingBox))
     {
-        render_command commandList = render_command(parameters.CommandBuffer, geometryInstanceIndex);
+        render_command commandList = render_command(parameters.OpaqueCommandBuffer, geometryInstanceIndex);
 
         commandList.set_vertex_buffer(vertexBuffer, 0);
 

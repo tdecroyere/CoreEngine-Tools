@@ -83,6 +83,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                         var blue = float.Parse(lineParts[3], CultureInfo.InvariantCulture);
                         currentDiffuseColor = new float[4] { red, green, blue, 1.0f };
                     }
+
+                    else if (lineParts[0].ToLower() == "map_d")
+                    {
+                        currentMaterial.IsTransparent = true;
+                    }
                 }
             }
 

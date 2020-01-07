@@ -97,6 +97,7 @@ namespace CoreEngineInteropGenerator
             }
             
             var stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine("import Foundation");
             stringBuilder.AppendLine("import CoreEngineCommonInterop");
             stringBuilder.AppendLine();
 
@@ -176,13 +177,18 @@ namespace CoreEngineInteropGenerator
                         stringBuilder.AppendLine($"    let contextObject = Unmanaged<{implementationType}>.fromOpaque(context!).takeUnretainedValue()");
                         stringBuilder.Append("    ");
 
-                        if (method.ReturnType.ToString() != "void") {
-                            
+                        if (method.ReturnType.ToString() != "void") 
+                        {
                             stringBuilder.Append("return ");
 
                             if (IsCastingNeededForSwiftType(swiftReturnType))
                             {
                                 stringBuilder.Append($"{swiftReturnType}(");
+
+                                if (method.ReturnType.ToString() == "string?")
+                                {
+                                    stringBuilder.Append("strdup(");
+                                }
                             }
                         }
 
@@ -247,7 +253,13 @@ namespace CoreEngineInteropGenerator
                         {
                             stringBuilder.Append(")");
                             
-                            if (method.ReturnType.ToString() == "bool")
+                            if (method.ReturnType.ToString() == "string?")
+                            {
+                                // TODO: We have a memory leak here, don't forget to call free
+                                stringBuilder.Append("!)");
+                            }
+                            
+                            else if (method.ReturnType.ToString() == "bool")
                             {
                                 stringBuilder.Append(" ? 1 : 0");
                             }
@@ -269,7 +281,6 @@ namespace CoreEngineInteropGenerator
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
                     {
                         var method = (MethodDeclarationSyntax)member;
-                        var parameters = method.ParameterList.Parameters;
                         var functionNameStruct = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier.ToString()}";
                         var functionName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{char.ToLowerInvariant(method.Identifier.ToString()[0]) + method.Identifier.ToString().Substring(1)}";
 

@@ -22,6 +22,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
         }
         
         public string Name { get; }
+        public bool IsTransparent { get; set; }
         public IList<MaterialProperty> Properties { get; } = new List<MaterialProperty>();
     }
 }

@@ -97,9 +97,8 @@ vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
 
 struct PixelOutput
 {
-    float4 Color1 [[color(0)]];
+    float4 Color [[color(0)]];
     float4 Color2 [[color(1)]];
-    float4 Color3 [[color(2)]];
 };
 
 float3 ComputeLightContribution(float3 worldNormal)
@@ -148,6 +147,7 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
                                const device GeometryInstance& geometryInstance [[buffer(3)]])
 {
     PixelOutput output = {};
+
     const device SimpleMaterial& simpleMaterial = *((const device SimpleMaterial*)material);
 
     constexpr sampler texture_sampler(mag_filter::linear,
@@ -155,7 +155,7 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
                                       mip_filter::linear, address::repeat, max_anisotropy(4));
 
     float3 normalVector = input.WorldNormal;
-    float4 albedo = simpleMaterial.DiffuseColor.a > 0 ? simpleMaterial.DiffuseColor : float4(1, 1, 1, 1);
+    float4 diffuseColor = simpleMaterial.DiffuseColor.a > 0 ? simpleMaterial.DiffuseColor : float4(1, 1, 1, 1);
 
     if (simpleMaterial.NormalTexture > 0)
     {
@@ -181,33 +181,29 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
 
         if (textureDiffuseColor.a == 1)
         {
-            albedo = float4(textureDiffuseColor.rgb, albedo.a);
+            diffuseColor = float4(textureDiffuseColor.rgb, diffuseColor.a);
         }
 
         else
         {
-            albedo = textureDiffuseColor;
+            diffuseColor = textureDiffuseColor;
         }
     }
 
-    if (albedo.a == 1.0)
+    if (geometryInstance.IsTransparent == 0 || diffuseColor.a == 1.0 || diffuseColor.a == 0.0)
     {
-        output.Color1 = float4(albedo.rgb * ComputeLightContribution(normalVector), 1);
+        discard_fragment();
     }
+    
+    float4 finalColor = float4(diffuseColor.rgb * ComputeLightContribution(normalVector), diffuseColor.a);
+    float3 premultipliedColor = finalColor.rgb * float3(finalColor.a);
 
-    else
-    {
-        float4 finalColor = float4(albedo.rgb * ComputeLightContribution(normalVector), albedo.a);
-        float3 premultipliedColor = finalColor.rgb * float3(finalColor.a);
+    float d = (input.Position.z);// / input.Position.w);
+    float coverage = finalColor.a;
+    float w = WeightFunction(coverage, d);
 
-        float d = (input.Position.z);// / input.Position.w);
-        float coverage = finalColor.a;
-        float w = WeightFunction(coverage, d);
-
-        output.Color2 = float4(premultipliedColor.rgb, coverage) * float4(w);
-        output.Color3 = coverage;
-    }
-
+    output.Color = float4(premultipliedColor.rgb, coverage) * float4(w);
+    output.Color2 = coverage;
     return output;
 }
 

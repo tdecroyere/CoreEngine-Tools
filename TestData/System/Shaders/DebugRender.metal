@@ -46,6 +46,7 @@ struct PixelOutput
     float4 Color [[color(0)]];
 };
 
+[[early_fragment_tests]]
 fragment PixelOutput PixelMain(VertexOutput input [[stage_in]])
 {
     PixelOutput output = {};

@@ -95,7 +95,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                 streamWriter.Write(new char[] { 'M', 'A', 'T', 'E', 'R', 'I', 'A', 'L'});
                 streamWriter.Write(version);
 
-                Logger.BeginAction("Writing Material data");
+                Logger.BeginAction($"Writing Material data for {material.Name}");
+
+                Logger.WriteMessage($"Is Transparent: {material.IsTransparent}");
+                streamWriter.Write(material.IsTransparent);
+
                 var textureResourceList = new List<TextureEntry>();
                 
                 var materialDataMemoryStream = new MemoryStream();
