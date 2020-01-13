@@ -9,23 +9,21 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 {
     public static class MetalShaderCompiler
     {
-        public static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data, bool transpileShader)
+        public static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderAsync(ReadOnlyMemory<byte> data, bool transpileShader, string includeDirectory)
         {
-            Logger.WriteMessage("Compiling metal shader with command line tools");
-
             if (transpileShader)
             {
                 var transpiledMetalShader = await TranspileShaderToMetalAsync(data);
 
                 if (transpiledMetalShader != null)
                 {
-                    return await CompileMetalShaderSourceAsync(transpiledMetalShader.Value);
+                    return await CompileMetalShaderSourceAsync(transpiledMetalShader.Value, includeDirectory);
                 }
             }
 
             else
             {
-                return await CompileMetalShaderSourceAsync(data);
+                return await CompileMetalShaderSourceAsync(data, includeDirectory);
             }
 
             return null;
@@ -82,7 +80,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             return outputArray;
         }
 
-        private static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderSourceAsync(ReadOnlyMemory<byte> data)
+        private static async Task<ReadOnlyMemory<byte>?> CompileMetalShaderSourceAsync(ReadOnlyMemory<byte> data, string includeDirectory)
         {
             // TODO: Find a way to invoke compilation in-memory
             // TODO: Put intermediate files into temp directory
@@ -103,7 +101,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             using var buildProcess = new Process();
             buildProcess.StartInfo.FileName = "xcrun";
-            buildProcess.StartInfo.Arguments = $"-sdk macosx metal -ffast-math -gline-tables-only -MO -c {inputShaderFile} -o {outputAirFile}";
+            buildProcess.StartInfo.Arguments = $"-sdk macosx metal -ffast-math -gline-tables-only -MO -I {includeDirectory} -c {inputShaderFile} -o {outputAirFile}";
 
             buildProcess.Start();
             buildProcess.WaitForExit();

@@ -90,15 +90,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                         streamWriter.Write(vertex.Position.X);
                         streamWriter.Write(vertex.Position.Y);
                         streamWriter.Write(vertex.Position.Z);
-                        streamWriter.Write(0.0f);
                         streamWriter.Write(vertex.Normal.X);
                         streamWriter.Write(vertex.Normal.Y);
                         streamWriter.Write(vertex.Normal.Z);
-                        streamWriter.Write(0.0f);
                         streamWriter.Write(vertex.TextureCoordinates.X);
                         streamWriter.Write(vertex.TextureCoordinates.Y);
-                        streamWriter.Write(0.0f);
-                        streamWriter.Write(0.0f);
                     }
 
                     foreach (var index in meshData.Indices)

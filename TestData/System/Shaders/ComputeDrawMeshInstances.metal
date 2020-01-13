@@ -1,74 +1,9 @@
 #include <metal_stdlib>
 #include <simd/simd.h>
 
+#include "Common.h"
+
 using namespace metal;
-
-struct VertexInput
-{
-    float3 Position;
-    float3 Normal;
-    float2 TextureCoordinates;
-};
-
-struct BoundingBox
-{
-    float3 MinPoint;
-    float3 MaxPoint;
-};
-
-struct BoundingFrustum
-{
-    float4 LeftPlane;
-    float4 RightPlane;
-    float4 TopPlane;
-    float4 BottomPlane;
-    float4 NearPlane;
-    float4 FarPlane;
-};
-
-struct GeometryPacket
-{
-    int VertexBufferIndex;
-    int IndexBufferIndex;
-};
-
-struct GeometryInstance
-{
-    int GeometryPacketIndex;
-    int StartIndex;
-    int IndexCount;
-    int MaterialIndex;
-    int IsTransparent;
-    float4x4 WorldMatrix;
-    BoundingBox WorldBoundingBox;
-};
-
-struct Camera
-{
-    float4x4 ViewMatrix;
-    float4x4 ProjectionMatrix;
-    BoundingFrustum BoundingFrustum;
-};
-
-struct SceneProperties
-{
-    Camera ActiveCamera;
-    Camera DebugCamera;
-    bool isDebugCameraActive;
-};
-
-struct ShaderParameters
-{
-    const device SceneProperties& SceneProperties [[id(0)]];
-    const device GeometryPacket* GeometryPackets [[id(1)]];
-    const device GeometryInstance* GeometryInstances [[id(2)]];
-    const array<const device VertexInput*, 10000> VertexBuffers [[id(3)]];
-    const array<const device uint*, 10000> IndexBuffers [[id(10003)]];
-    const array<const device void*, 10000> MaterialData [[id(20003)]];
-    const array<texture2d<float>, 10000> MaterialTextures [[id(30003)]];
-    const device int* MaterialTextureOffsets [[id(40003)]];
-    command_buffer OpaqueCommandBuffer [[id(40004)]];
-};
 
 bool Intersect(float4 plane, BoundingBox box)
 {

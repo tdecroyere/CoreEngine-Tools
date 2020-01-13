@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -72,12 +73,20 @@ namespace CoreEngine.Compiler
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
+            // TODO: Remove this hack
+            bool overrideMetalFiles = false;
+
+            if (sourceFiles.Where(item => (Path.GetExtension(item) == ".h" && fileTracker.HasFileChanged(item))).Any())
+            {
+                overrideMetalFiles = true;
+            }
+
             foreach (var sourceFile in sourceFiles)
             {
-                var hasFileChanged = fileTracker.HasFileChanged(sourceFile) || searchPattern != null;
+                var hasFileChanged = fileTracker.HasFileChanged(sourceFile) || searchPattern != null || (Path.GetExtension(sourceFile) == ".metal" && Path.GetFileName(sourceFile).StartsWith("Render") && overrideMetalFiles);
                 var destinationFiles = fileTracker.GetDestinationFiles(sourceFile);
 
-                var sourceFileAbsoluteDirectory = ConstructSourceFileAbsolutDirectory(inputDirectory, sourceFile);
+                var sourceFileAbsoluteDirectory = ConstructSourceFileAbsoluteDirectory(inputDirectory, sourceFile);
                 var destinationPath = Path.Combine(outputDirectory, sourceFileAbsoluteDirectory);
 
                 var destinationFilesExist = true;
@@ -93,6 +102,12 @@ namespace CoreEngine.Compiler
 
                 if (hasFileChanged || !destinationFilesExist)
                 {
+                    if (Path.GetExtension(sourceFile) == ".h")
+                    {
+                        Logger.WriteMessage("Header file changed");
+                        continue;
+                    }
+
                     if (isWatchMode)
                     {
                         Logger.WriteMessage($"{DateTime.Now.ToString(CultureInfo.InvariantCulture)} - Detected file change for '{sourceFile}'");
@@ -181,7 +196,7 @@ namespace CoreEngine.Compiler
             return sourceFiles.ToArray();
         }
 
-        private static string ConstructSourceFileAbsolutDirectory(string inputDirectory, string sourceFile)
+        private static string ConstructSourceFileAbsoluteDirectory(string inputDirectory, string sourceFile)
         {
             var directoryName = Path.GetDirectoryName(sourceFile);
 
@@ -217,7 +232,7 @@ namespace CoreEngine.Compiler
                 targetPlatform = "linux";
             }
 
-            var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile), outputDirectory);
+            var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile), Path.GetDirectoryName(sourceFile), outputDirectory);
             
             try
             {

@@ -20,7 +20,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
         {
             get
             {
-                return new string[] { ".hlsl", ".metal" };
+                return new string[] { ".hlsl", ".metal", ".h" };
             }
         }
 
@@ -39,14 +39,18 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 throw new ArgumentNullException(nameof(context));
             }
 
+            if (Path.GetExtension(context.SourceFilename) == ".h")
+            {
+                return new ReadOnlyMemory<ResourceEntry>(new ResourceEntry[0]);
+            }
+
             var version = 1;
 
-            Logger.WriteMessage($"Shader compiler platform: {context.TargetPlatform}");
             ReadOnlyMemory<byte>? shaderCompiledData = null;
 
             if (context.TargetPlatform == "osx")
             {
-                shaderCompiledData = await MetalShaderCompiler.CompileMetalShaderAsync(sourceData, Path.GetExtension(context.SourceFilename) != ".metal");
+                shaderCompiledData = await MetalShaderCompiler.CompileMetalShaderAsync(sourceData, Path.GetExtension(context.SourceFilename) != ".metal", context.InputDirectory);
             }
 
             else if (context.TargetPlatform == "windows")

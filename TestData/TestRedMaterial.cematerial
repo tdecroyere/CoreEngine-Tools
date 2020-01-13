@@ -4,3 +4,4 @@ Material:
     - DiffuseColor: [1, 0.1, 0.1, 0.5]
     - DiffuseTexture: ''
     - NormalTexture: ''
+    - BumpTexture: ''

@@ -63,54 +63,37 @@ float MinComponent(float3 v)
     return min(min(v.x, v.y), v.z);
 };
 
+float4 ResolveTexturePixel(const device texture2d_ms<float>& texture, float2 textureCoordinates)
+{
+    uint2 pixelCoordinates = uint2(textureCoordinates.x * texture.get_width(), textureCoordinates.y * texture.get_height());  
+    uint sampleCount = texture.get_num_samples();  
+
+    float4 accumulatedColor = 0;
+    
+    for(uint i = 0; i < sampleCount; i++) 
+    {  
+        float4 sample = texture.read(pixelCoordinates, i);  
+        accumulatedColor += float4(sample);
+    }  
+
+    return float4(accumulatedColor / sampleCount);
+}
+
 fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
                                const device ShaderParameters& shaderParameters)
 {
     PixelOutput output = {};
 
-    uint2 pixelCoordinates = uint2(input.TextureCoordinates.x * shaderParameters.InputTexture.get_width(), input.TextureCoordinates.y * shaderParameters.InputTexture.get_height());  
-    uint sampleCount = shaderParameters.InputTexture.get_num_samples();  
+    float4 opaqueColor = ResolveTexturePixel(shaderParameters.InputTexture, input.TextureCoordinates);
+    float modulation = ResolveTexturePixel(shaderParameters.InputTransparentRevealageTexture, input.TextureCoordinates).r;
 
-    float4 opaqueColor = 0;
-    
-    for(uint i = 0; i < sampleCount; i++) {  
-        float4 sample = shaderParameters.InputTexture.read(pixelCoordinates, i);  
-        opaqueColor += sample;  
-    }  
-
-    opaqueColor /= sampleCount;
-
-    pixelCoordinates = uint2(input.TextureCoordinates.x * shaderParameters.InputTransparentRevealageTexture.get_width(), input.TextureCoordinates.y * shaderParameters.InputTransparentRevealageTexture.get_height());  
-    sampleCount = shaderParameters.InputTransparentRevealageTexture.get_num_samples();  
-
-    float transparentRevealageColor = 0;
-    
-    for(uint i = 0; i < sampleCount; i++) {  
-        float4 sample = shaderParameters.InputTransparentRevealageTexture.read(pixelCoordinates, i);  
-        transparentRevealageColor += sample.r;  
-    }  
-
-    transparentRevealageColor /= sampleCount;
-
-    float modulation = transparentRevealageColor;
-
-    if (modulation == 1.0)
+    if (modulation == 1)
     {
-        output.Color = float4(opaqueColor.rgb, 1.0);
+        output.Color = opaqueColor;
         return output;
     }
 
-    pixelCoordinates = uint2(input.TextureCoordinates.x * shaderParameters.InputTransparentTexture.get_width(), input.TextureCoordinates.y * shaderParameters.InputTransparentTexture.get_height());  
-    sampleCount = shaderParameters.InputTransparentTexture.get_num_samples();  
-
-    float4 transparentColor = 0;
-    
-    for(uint i = 0; i < sampleCount; i++) {  
-        float4 sample = shaderParameters.InputTransparentTexture.read(pixelCoordinates, i);  
-        transparentColor += sample;  
-    }  
-
-    transparentColor /= sampleCount;
+    float4 transparentColor = ResolveTexturePixel(shaderParameters.InputTransparentTexture, input.TextureCoordinates);
 
     if (isinf(transparentColor.a))
     {
@@ -119,7 +102,7 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
 
     if (isinf(MaxComponent(transparentColor.xyz)))
     {
-        transparentColor = (float4)(1.0);
+        transparentColor = float4(1.0);
     }
 
     const float epsilon = 0.0010000000;
@@ -128,7 +111,7 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
     transparentColor.rgb *= ((float3)(0.5) + (max(modulation, epsilon) / (float3)((2.0 * max(epsilon, modulation)))));
 
     output.Color = float4(opaqueColor.rgb * modulation + (transparentColor.rgb * (1 - modulation) / float3(max(transparentColor.a, 0.00001))), 1.0);
-    //output.Color = float4(transparentColor.rgb / float3(max(transparentColor.a, 0.000010000000)), 1);
-    //output.Color = float4(transparentRevealageColor, transparentRevealageColor, transparentRevealageColor, 1);
+    //output.Color = half4(transparentColor.rgb, 1);
+    //zoutput.Color = half4(modulation, modulation, modulation, 1);
     return output; 
 }

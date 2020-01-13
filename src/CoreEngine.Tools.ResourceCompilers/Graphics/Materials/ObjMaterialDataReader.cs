@@ -29,6 +29,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
             var currentDiffuseColor = new float[4];
             var currentDiffuseTexture = string.Empty;
             var currentNormalTexture = string.Empty;
+            var currentBumpTexture = string.Empty;
             
             using var reader = new StreamReader(new MemoryStream(sourceData.ToArray()));
             
@@ -48,12 +49,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                             currentMaterial.Properties.Add(new MaterialProperty("DiffuseColor", currentDiffuseColor));
                             currentMaterial.Properties.Add(new MaterialProperty("DiffuseTexture", currentDiffuseTexture));
                             currentMaterial.Properties.Add(new MaterialProperty("NormalTexture", currentNormalTexture));
+                            currentMaterial.Properties.Add(new MaterialProperty("BumpTexture", currentBumpTexture));
 
                             materials.Add(currentMaterial);
 
                             currentDiffuseColor = new float[4];
                             currentDiffuseTexture = string.Empty;
                             currentNormalTexture = string.Empty;
+                            currentBumpTexture = string.Empty;
                         }
 
                         var materialName = lineParts[1];
@@ -67,6 +70,13 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                         var texturePath = lineParts[1];
                         var rootDirectory = Path.GetDirectoryName(context.OutputDirectory);
                         currentNormalTexture = $"{context.OutputDirectory.Replace(rootDirectory, string.Empty)}/{Path.GetDirectoryName(texturePath)}/{Path.GetFileNameWithoutExtension(texturePath)}.texture";
+                    }
+
+                    else if (lineParts[0].ToLower() == "map_bump")
+                    {
+                        var texturePath = lineParts[1];
+                        var rootDirectory = Path.GetDirectoryName(context.OutputDirectory);
+                        currentBumpTexture = $"{context.OutputDirectory.Replace(rootDirectory, string.Empty)}/{Path.GetDirectoryName(texturePath)}/{Path.GetFileNameWithoutExtension(texturePath)}.texture";
                     }
 
                     else if (lineParts[0].ToLower() == "map_kd")
@@ -96,6 +106,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                 currentMaterial.Properties.Add(new MaterialProperty("DiffuseColor", currentDiffuseColor));
                 currentMaterial.Properties.Add(new MaterialProperty("DiffuseTexture", currentDiffuseTexture));
                 currentMaterial.Properties.Add(new MaterialProperty("NormalTexture", currentNormalTexture));
+                currentMaterial.Properties.Add(new MaterialProperty("BumpTexture", currentBumpTexture));
 
                 materials.Add(currentMaterial);
             }
