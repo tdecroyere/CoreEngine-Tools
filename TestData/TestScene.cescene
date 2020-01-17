@@ -3,10 +3,18 @@ Entities:
     Components:
       - Component: 'CoreEngine.Components.SceneComponent'
         ActiveCamera: 'MainCamera'
+  - Entity: 'UnitCube'
+    Components:
+      - Component: 'CoreEngine.Components.TransformComponent'
+        Position: [0, 0.45, 0]
+        Scale: [0.5, 0.5, 0.5]
+      - Component: 'CoreEngine.Graphics.Components.MeshComponent'
+        MeshResourceId: 'resource:/UnitCube.mesh'
   - Entity: 'Teapot1'
     Components:
       - Component: 'CoreEngine.Components.TransformComponent'
-        Position: [0, 100, 0]
+        Position: [0, 1, 0]
+        Scale: [0.01, 0.01, 0.01]
         RotationY: 90
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
@@ -15,7 +23,8 @@ Entities:
   - Entity: 'Teapot2'
     Components:
       - Component: 'CoreEngine.Components.TransformComponent'
-        Position: [50, 100, 0]
+        Position: [0.5, 1, 0]
+        Scale: [0.01, 0.01, 0.01]
         RotationY: 45
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
@@ -24,7 +33,8 @@ Entities:
   - Entity: 'Teapot3'
     Components:
       - Component: 'CoreEngine.Components.TransformComponent'
-        Position: [100, 100, 0]
+        Position: [1, 1, 0]
+        Scale: [0.01, 0.01, 0.01]
         RotationY: 45
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
@@ -33,7 +43,8 @@ Entities:
   - Entity: 'Teapot4'
     Components:
       - Component: 'CoreEngine.Components.TransformComponent'
-        Position: [150, 100, 0]
+        Position: [1.5, 1, 0]
+        Scale: [0.01, 0.01, 0.01]
         RotationY: 45
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
@@ -42,15 +53,17 @@ Entities:
   - Entity: 'Teapot5'
     Components:
       - Component: 'CoreEngine.Components.TransformComponent'
-        Position: [200, 100, 0]
+        Position: [2, 1, 0]
+        Scale: [0.01, 0.01, 0.01]
         RotationY: 45
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/teapot.mesh'
-  - Entity: 'TestEntity2'
+  - Entity: 'SponzaModel'
     Components:
       - Component: 'CoreEngine.Graphics.Components.MeshComponent'
         MeshResourceId: 'resource:/Sponza/sponza.mesh'
       - Component: 'CoreEngine.Components.TransformComponent'
+        Scale: [0.013, 0.013, 0.013]
   # - Entity: 'Maison'
   #   Components:
   #     - Component: 'CoreEngine.Graphics.MeshComponent'
@@ -61,15 +74,15 @@ Entities:
     Components:
       - Component: 'CoreEngine.Graphics.Components.CameraComponent'
       - Component: 'CoreEngine.Components.TransformComponent'
-        Position: [-100, 100, 0]
+        Position: [-1, 1.8, 0]
         RotationY: 90
       - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
-        MovementAcceleration: 30000
+        MovementAcceleration: 300
   - Entity: 'DebugCamera'
     Components:
       - Component: 'CoreEngine.Graphics.Components.CameraComponent'
       - Component: 'CoreEngine.Components.TransformComponent'
-        Position: [-100, 1000, 0]
+        Position: [-1, 10, 0]
         RotationY: 90
         RotationX: 90
       # - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'

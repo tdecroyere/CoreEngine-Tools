@@ -14,8 +14,10 @@ struct VertexOutput
 vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
                                const uint instanceId [[instance_id]],
                                const device VertexInput* vertexBuffer [[buffer(0)]],
-                               const device Camera& camera [[buffer(1)]],
-                               const device GeometryInstance& geometryInstance [[buffer(2)]])
+                               const device ShaderParameters& shaderParameters [[buffer(1)]],
+                               const device Camera& camera [[buffer(2)]],
+                               const device GeometryInstance& geometryInstance [[buffer(3)]],
+                               const device Light& light [[buffer(4)]])
 {
     VertexInput input = vertexBuffer[vertexId];
     VertexOutput output = {};
@@ -35,11 +37,15 @@ fragment void PixelMain(VertexOutput input [[stage_in]],
                         const device ShaderParameters& shaderParameters [[buffer(2)]],
                         const device GeometryInstance& geometryInstance [[buffer(3)]])
 {
-    MaterialData materialData = ProcessSimpleMaterial(input.Position.xyz, float3(0), float3(0), float3(0), true, input.TextureCoordinates, material, materialTextureOffset, shaderParameters);
 
-    if (geometryInstance.IsTransparent == 1 && materialData.Albedo.a < 1.0)
+    if (geometryInstance.IsTransparent == 1)
     {
-        discard_fragment();
+        MaterialData materialData = ProcessSimpleMaterial(input.Position.xyz, float3(0), float3(0), float3(0), true, input.TextureCoordinates, material, materialTextureOffset, shaderParameters);
+
+        if (materialData.Albedo.a < 1.0)
+        {
+            discard_fragment();
+        }
     }
 }
 

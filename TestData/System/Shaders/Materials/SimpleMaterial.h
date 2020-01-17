@@ -4,6 +4,11 @@
 using namespace metal;
 using namespace simd;
 
+constexpr sampler texture_sampler(mag_filter::linear,
+                                      min_filter::linear,
+                                      mip_filter::linear, address::repeat, max_anisotropy(8));
+
+
 struct SimpleMaterial
 {
     float4 DiffuseColor;
@@ -80,17 +85,11 @@ MaterialData ProcessSimpleMaterial(float3 position, float3 normal, float3 worldN
 
     const device SimpleMaterial& simpleMaterial = *((const device SimpleMaterial*)material);
 
-    constexpr sampler texture_sampler(mag_filter::linear,
-                                      min_filter::linear,
-                                      mip_filter::linear, address::repeat, max_anisotropy(8));
-
     materialData.Normal = worldNormal;
     materialData.Albedo = simpleMaterial.DiffuseColor.a > 0 ? float4(simpleMaterial.DiffuseColor) : float4(1, 1, 1, 1);
 
     if (!depthOnly && simpleMaterial.NormalTexture > 0 && !(worldNormal.x == 0 && worldNormal.y == 0 && worldNormal.z == 0))
     {
-        texture2d<float> normalTexture = GetMaterialTexture(shaderParameters, materialTextureOffset, simpleMaterial.NormalTexture);
-
         if (simpleMaterial.BumpTexture > 0)
         {
             float3  N            = normalize(normal);
@@ -106,9 +105,11 @@ MaterialData ProcessSimpleMaterial(float3 position, float3 normal, float3 worldN
 
             float3 texDir3D = normalize( transpose(tbnMat) * -viewDirection );
 
-            texture2d<float> bumpTexture = GetMaterialTexture(shaderParameters, materialTextureOffset, simpleMaterial.BumpTexture);
+            texture2d<float> bumpTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.BumpTexture);
             textureCoordinates = NoParallax(bumpTexture, texture_sampler, texDir3D, textureCoordinates);
         }
+
+        texture2d<float> normalTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.NormalTexture);
 
         float2 textureColor = normalTexture.sample(texture_sampler, textureCoordinates).rg * 2.0 - 1.0;
         float3 nrmBaseNormal = normalize(normal);
@@ -118,7 +119,7 @@ MaterialData ProcessSimpleMaterial(float3 position, float3 normal, float3 worldN
 
     if (simpleMaterial.DiffuseTexture > 0)
     {
-        texture2d<float> diffuseTexture = GetMaterialTexture(shaderParameters, materialTextureOffset, simpleMaterial.DiffuseTexture);
+        texture2d<float> diffuseTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.DiffuseTexture);
         float4 textureDiffuseColor = diffuseTexture.sample(texture_sampler, textureCoordinates);
 
         if (textureDiffuseColor.a == 1)
