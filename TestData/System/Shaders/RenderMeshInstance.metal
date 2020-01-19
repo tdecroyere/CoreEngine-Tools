@@ -7,6 +7,7 @@ using namespace metal;
 
 struct VertexOutput
 {
+    uint InstanceId [[flat]];
     float4 Position [[position]];
     float3 WorldPosition;
     float3 ModelViewPosition;
@@ -19,18 +20,17 @@ struct VertexOutput
 vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
                                const uint instanceId [[instance_id]],
                                const device VertexInput* vertexBuffer [[buffer(0)]],
-                               const device ShaderParameters& shaderParameters [[buffer(1)]],
-                               const device Camera& camera [[buffer(2)]],
-                               const device GeometryInstance& geometryInstance [[buffer(3)]],
-                               const device Light& light [[buffer(4)]])
+                               const device Camera& camera [[buffer(1)]],
+                               const device GeometryInstance& geometryInstance [[buffer(2)]])
 {
     VertexInput input = vertexBuffer[vertexId];
     VertexOutput output = {};
 
     float4x4 worldMatrix = geometryInstance.WorldMatrix;
-    float4x4 worldViewProjMatrix = (camera.ProjectionMatrix * camera.ViewMatrix) * worldMatrix;
+    float4x4 viewProjectionMatrix = camera.ViewProjectionMatrix;
 
-    output.Position = worldViewProjMatrix * float4(input.Position, 1.0);
+    output.InstanceId = instanceId;
+    output.Position = viewProjectionMatrix * worldMatrix * float4(input.Position, 1.0);
     output.WorldPosition = (worldMatrix * float4(input.Position, 1.0)).xyz;
     output.ModelViewPosition = (camera.ViewMatrix * worldMatrix * float4(input.Position, 1.0)).xyz;
     output.WorldNormal = float3(normalize(worldMatrix * float4(input.Normal, 0.0)).xyz);
@@ -48,8 +48,8 @@ struct PixelOutput
 
 [[early_fragment_tests]]
 fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
-                               const device void* material [[buffer(0)]],
-                               const device int& materialTextureOffset [[buffer(1)]],
+                               const device Material& material [[buffer(0)]],
+                               const device void* materialBufferData [[buffer(1)]],
                                const device ShaderParameters& shaderParameters [[buffer(2)]],
                                const device GeometryInstance& geometryInstance [[buffer(3)]],
                                const device Light& light [[buffer(4)]])
@@ -59,20 +59,20 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
     // output.OpaqueColor = float4(0, 1, 0, 1);
     // return output;
     
-    MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.Normal, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, material, materialTextureOffset, shaderParameters);
+    MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.Normal, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
 
     float3 lightSpacePosition;
     texture2d<float> lightShadowBuffer;
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 3; i++)
     {
         Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
-        float4 rawPosition = ((lightCamera.ProjectionMatrix * lightCamera.ViewMatrix)) * float4(input.WorldPosition, 1);
+        float4 rawPosition = lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1);
         lightSpacePosition = rawPosition.xyz / rawPosition.w;
 
         if (all(lightSpacePosition.xyz < 1.0) && all(lightSpacePosition.xyz > float3(-1,-1,0)))
         {
-            lightShadowBuffer = shaderParameters.Textures[i];
+            lightShadowBuffer = shaderParameters.Textures[lightCamera.DepthBufferTextureIndex];
             break;
         }
     }
@@ -86,7 +86,7 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
     output.OpaqueColor = float4(outputColor, 1);
 
     // TODO: Move all debug overlay to a debug shader
-    //output.OpaqueColor = DebugAddCascadeColors(output.OpaqueColor, shaderParameters, light, input.WorldPosition);
+    output.OpaqueColor = DebugAddCascadeColors(output.OpaqueColor, shaderParameters, light, input.WorldPosition);
 
     //output.OpaqueColor = float4(materialData.Normal * 0.5 + 0.5, 1);
     //output.OpaqueColor = float4(input.LightPosition.zzz, 1);

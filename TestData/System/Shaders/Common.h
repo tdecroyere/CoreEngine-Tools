@@ -18,12 +18,12 @@ struct BoundingBox
 
 struct BoundingFrustum
 {
-    float4 LeftPlane;
-    float4 RightPlane;
-    float4 TopPlane;
-    float4 BottomPlane;
-    float4 NearPlane;
-    float4 FarPlane;
+    packed_float4 LeftPlane;
+    packed_float4 RightPlane;
+    packed_float4 TopPlane;
+    packed_float4 BottomPlane;
+    packed_float4 NearPlane;
+    packed_float4 FarPlane;
 };
 
 struct GeometryPacket
@@ -38,26 +38,36 @@ struct GeometryInstance
     int StartIndex;
     int IndexCount;
     int MaterialIndex;
-    int IsTransparent;
     float4x4 WorldMatrix;
     BoundingBox WorldBoundingBox;
 };
 
 struct Camera
 {
-    float3 WorldPosition;
+    int DepthBufferTextureIndex;
+    packed_float3 WorldPosition;
     float4x4 ViewMatrix;
     float4x4 ProjectionMatrix;
+    float4x4 ViewProjectionMatrix;
     BoundingFrustum BoundingFrustum;
+    int OpaqueCommandListIndex;
+    int OpaqueDepthCommandListIndex;
+    int TransparentCommandListIndex;
+    int TransparentDepthCommandListIndex;
+    bool DepthOnly;
 };
 
 struct Light
 {
-    float3 WorldSpacePosition;
-    int CameraIndexes[5];
-    int CommandListIndexes[5];
-    int ShadowMapTextureIndexes[5];
-    int CascadeCountToRemove;
+    packed_float3 WorldSpacePosition;
+    int CameraIndexes[4];
+};
+
+struct Material
+{
+    int MaterialBufferIndex;
+    int MaterialTextureOffset;
+    bool IsTransparent;
 };
 
 struct SceneProperties
@@ -72,15 +82,12 @@ struct ShaderParameters
     const device SceneProperties& SceneProperties [[id(0)]];
     const device Camera* Cameras [[id(1)]];
     const device Light* Lights [[id(2)]];
-    const device GeometryPacket* GeometryPackets [[id(3)]];
-    const device GeometryInstance* GeometryInstances [[id(4)]];
-    const array<const device VertexInput*, 10000> VertexBuffers [[id(5)]];
-    const array<const device uint*, 10000> IndexBuffers [[id(10005)]];
-    const array<const device void*, 10000> MaterialData [[id(20005)]];
-    const array<texture2d<float>, 10000> Textures [[id(30005)]];
-    const device int* MaterialTextureOffsets [[id(40005)]];
-    command_buffer CameraCommandBuffer [[id(40006)]];
-    const array<command_buffer, 100> LightCommandBuffers [[id(40007)]];
+    const device Material* Materials [[id(3)]];
+    const device GeometryPacket* GeometryPackets [[id(4)]];
+    const device GeometryInstance* GeometryInstances [[id(5)]];
+    const array<const device void*, 10000> Buffers [[id(6)]];
+    const array<texture2d<float>, 10000> Textures [[id(10006)]];
+    const array<command_buffer, 100> IndirectCommandBuffers [[id(20006)]];
 };
 
 struct MaterialData
@@ -112,7 +119,7 @@ float ComputeLightShadow(Light light, float3 normal, texture2d<float> shadowMap,
     float bias = max(maxBias * (1.0 - shadowMapDepth), minBias);  
     
     float lightSpaceDepth = lightSpacePosition.z - bias;
-    //float lightSpaceDepth = lightSpacePosition.z - 0.8;
+    //float lightSpaceDepth = lightSpacePosition.z - 0.06;
 
     return lightSpaceDepth < shadowMapDepth;// * (dot(normal, normalize(light.Camera1.WorldPosition)) > 0);
 }

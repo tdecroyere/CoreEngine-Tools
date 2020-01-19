@@ -7,12 +7,11 @@ using namespace metal;
 
 struct VertexOutput
 {
+    uint InstanceId [[flat]];
     float4 Position [[position]];
     float3 WorldPosition;
-    float3 ModelViewPosition;
-    float4 LightSpacePosition;
-    float4 LightSpacePosition2;
     float3 WorldNormal;
+    float3 ModelViewPosition;
     float3 Normal;
     float2 TextureCoordinates;
     float3 ViewDirection;
@@ -21,22 +20,19 @@ struct VertexOutput
 vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
                                const uint instanceId [[instance_id]],
                                const device VertexInput* vertexBuffer [[buffer(0)]],
-                               const device ShaderParameters& shaderParameters [[buffer(1)]],
-                               const device Camera& camera [[buffer(2)]],
-                               const device GeometryInstance& geometryInstance [[buffer(3)]],
-                               const device Light& light [[buffer(4)]])
+                               const device Camera& camera [[buffer(1)]],
+                               const device GeometryInstance& geometryInstance [[buffer(2)]])
 {
     VertexInput input = vertexBuffer[vertexId];
     VertexOutput output = {};
 
     float4x4 worldMatrix = geometryInstance.WorldMatrix;
-    float4x4 worldViewProjMatrix = (camera.ProjectionMatrix * camera.ViewMatrix) * worldMatrix;
+    float4x4 viewProjectionMatrix = camera.ViewProjectionMatrix;
 
-    output.Position = worldViewProjMatrix * float4(input.Position, 1.0);
+    output.InstanceId = instanceId;
+    output.Position = viewProjectionMatrix * worldMatrix * float4(input.Position, 1.0);
     output.WorldPosition = (worldMatrix * float4(input.Position, 1.0)).xyz;
     output.ModelViewPosition = (camera.ViewMatrix * worldMatrix * float4(input.Position, 1.0)).xyz;
-    output.LightSpacePosition = ((shaderParameters.Cameras[light.CameraIndexes[0]].ProjectionMatrix * shaderParameters.Cameras[light.CameraIndexes[0]].ViewMatrix) * geometryInstance.WorldMatrix) * float4(input.Position, 1);
-    output.LightSpacePosition2 = ((shaderParameters.Cameras[light.CameraIndexes[1]].ProjectionMatrix * shaderParameters.Cameras[light.CameraIndexes[1]].ViewMatrix) * geometryInstance.WorldMatrix) * float4(input.Position, 1);
     output.WorldNormal = float3(normalize(worldMatrix * float4(input.Normal, 0.0)).xyz);
     output.Normal = input.Normal;
     output.TextureCoordinates = input.TextureCoordinates;
@@ -62,28 +58,41 @@ float WeightFunction(float alpha, float depth)
 
 [[early_fragment_tests]]
 fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
-                               const device void* material [[buffer(0)]],
-                               const device int& materialTextureOffset [[buffer(1)]],
+                               const device Material& material [[buffer(0)]],
+                               const device void* materialBufferData [[buffer(1)]],
                                const device ShaderParameters& shaderParameters [[buffer(2)]],
                                const device GeometryInstance& geometryInstance [[buffer(3)]],
                                const device Light& light [[buffer(4)]])
 {
     PixelOutput output = {};
     
-    if (geometryInstance.IsTransparent == 1)
+    MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.Normal, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
+
+    float3 lightSpacePosition;
+    texture2d<float> lightShadowBuffer;
+
+    for (int i = 0; i < 3; i++)
     {
-        MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.Normal, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, material, materialTextureOffset, shaderParameters);
+        Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
+        float4 rawPosition = lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1);
+        lightSpacePosition = rawPosition.xyz / rawPosition.w;
 
-        float4 finalColor = float4(materialData.Albedo.rgb * ComputeLightContribution(light, shaderParameters.Textures[0], input.LightSpacePosition.xyz, materialData.Normal), materialData.Albedo.a);
-        float3 premultipliedColor = finalColor.rgb * float3(finalColor.a);
-
-        float d = (input.Position.z);// / input.Position.w);
-        float coverage = finalColor.a;
-        float w = WeightFunction(coverage, d);
-
-        output.AccumulationColor = float4(premultipliedColor.rgb, coverage) * float4(w);
-        output.CoverageColor = coverage;
+        if (all(lightSpacePosition.xyz < 1.0) && all(lightSpacePosition.xyz > float3(-1,-1,0)))
+        {
+            lightShadowBuffer = shaderParameters.Textures[lightCamera.DepthBufferTextureIndex];
+            break;
+        }
     }
+
+    float4 finalColor = float4(materialData.Albedo.rgb * ComputeLightContribution(light, lightShadowBuffer, lightSpacePosition, materialData.Normal), materialData.Albedo.a);
+    float3 premultipliedColor = finalColor.rgb * float3(finalColor.a);
+
+    float d = (input.Position.z);// / input.Position.w);
+    float coverage = finalColor.a;
+    float w = WeightFunction(coverage, d);
+
+    output.AccumulationColor = float4(premultipliedColor.rgb, coverage) * float4(w);
+    output.CoverageColor = coverage;
 
     return output;
 }
