@@ -4,12 +4,13 @@ namespace CoreEngine.Tools.ResourceCompilers
 {
     public class CompilerContext
     {
-        public CompilerContext(string targetPlatform, string targetFilename, string inputDirectory, string outputDirectory)
+        public CompilerContext(string targetPlatform, string targetFilename, string inputDirectory, string outputDirectory, string rootOutputDirectory)
         {
             this.TargetPlatform = targetPlatform;
             this.SourceFilename = targetFilename;
             this.InputDirectory = inputDirectory;
             this.OutputDirectory = outputDirectory;
+            this.RootOutputDirectory = rootOutputDirectory;
         }
 
         public string TargetPlatform
@@ -28,6 +29,11 @@ namespace CoreEngine.Tools.ResourceCompilers
         }
 
         public string? OutputDirectory
+        {
+            get;
+        }
+
+        public string RootOutputDirectory
         {
             get;
         }

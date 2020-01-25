@@ -7,34 +7,24 @@ using namespace metal;
 
 struct VertexOutput
 {
-    uint InstanceId [[flat]];
     float4 Position [[position]];
     float3 WorldPosition;
-    float3 ModelViewPosition;
     float3 WorldNormal;
-    float3 Normal;
     float2 TextureCoordinates;
     float3 ViewDirection;
 };
 
 vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
-                               const uint instanceId [[instance_id]],
                                const device VertexInput* vertexBuffer [[buffer(0)]],
-                               const device Camera& camera [[buffer(1)]],
+                               constant Camera& camera [[buffer(1)]],
                                const device GeometryInstance& geometryInstance [[buffer(2)]])
 {
-    VertexInput input = vertexBuffer[vertexId];
+    const device VertexInput& input = vertexBuffer[vertexId];
     VertexOutput output = {};
 
-    float4x4 worldMatrix = geometryInstance.WorldMatrix;
-    float4x4 viewProjectionMatrix = camera.ViewProjectionMatrix;
-
-    output.InstanceId = instanceId;
-    output.Position = viewProjectionMatrix * worldMatrix * float4(input.Position, 1.0);
-    output.WorldPosition = (worldMatrix * float4(input.Position, 1.0)).xyz;
-    output.ModelViewPosition = (camera.ViewMatrix * worldMatrix * float4(input.Position, 1.0)).xyz;
-    output.WorldNormal = float3(normalize(worldMatrix * float4(input.Normal, 0.0)).xyz);
-    output.Normal = input.Normal;
+    output.Position = camera.ViewProjectionMatrix * geometryInstance.WorldMatrix * float4(input.Position, 1.0);
+    output.WorldPosition = (geometryInstance.WorldMatrix * float4(input.Position, 1.0)).xyz;
+    output.WorldNormal = float3(normalize(geometryInstance.WorldMatrix * float4(input.Normal, 0.0)).xyz);
     output.TextureCoordinates = input.TextureCoordinates;
     output.ViewDirection = camera.WorldPosition - output.WorldPosition;
 
@@ -56,15 +46,12 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
 {
     PixelOutput output = {};
 
-    // output.OpaqueColor = float4(0, 1, 0, 1);
-    // return output;
-    
-    MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.Normal, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
+    MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
 
     float3 lightSpacePosition;
     texture2d<float> lightShadowBuffer;
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
     {
         Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
         float4 rawPosition = lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1);
@@ -77,20 +64,18 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
         }
     }
 
-    float3 outputColor = materialData.Albedo.rgb * ComputeLightContribution(light, lightShadowBuffer, lightSpacePosition, materialData.Normal);
+    float3 outputColor = ComputeLightContribution(light, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection));
     //float3 outputColor = ComputeLightContribution(materialData.Normal);
-    //float exposure = 1;//0.05;
-    //outputColor = ToneMapACES(outputColor * exposure);
-
 
     output.OpaqueColor = float4(outputColor, 1);
 
     // TODO: Move all debug overlay to a debug shader
-    output.OpaqueColor = DebugAddCascadeColors(output.OpaqueColor, shaderParameters, light, input.WorldPosition);
+    //output.OpaqueColor = DebugAddCascadeColors(output.OpaqueColor, shaderParameters, light, input.WorldPosition);
 
+    //output.OpaqueColor = float4(materialData.Albedo, 1);
     //output.OpaqueColor = float4(materialData.Normal * 0.5 + 0.5, 1);
-    //output.OpaqueColor = float4(input.LightPosition.zzz, 1);
-    //output.OpaqueColor = float4(lightPosition2.zzz, 1);
+    //output.OpaqueColor = float4(materialData.Roughness, materialData.Roughness, materialData.Roughness, 1);
+    //output.OpaqueColor = float4(input.TextureCoordinates.rgr, 1);
 
     return output;
 }

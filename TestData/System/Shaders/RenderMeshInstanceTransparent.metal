@@ -7,34 +7,24 @@ using namespace metal;
 
 struct VertexOutput
 {
-    uint InstanceId [[flat]];
     float4 Position [[position]];
     float3 WorldPosition;
     float3 WorldNormal;
-    float3 ModelViewPosition;
-    float3 Normal;
     float2 TextureCoordinates;
     float3 ViewDirection;
 };
 
 vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
-                               const uint instanceId [[instance_id]],
                                const device VertexInput* vertexBuffer [[buffer(0)]],
-                               const device Camera& camera [[buffer(1)]],
+                               constant Camera& camera [[buffer(1)]],
                                const device GeometryInstance& geometryInstance [[buffer(2)]])
 {
-    VertexInput input = vertexBuffer[vertexId];
+    const device VertexInput& input = vertexBuffer[vertexId];
     VertexOutput output = {};
 
-    float4x4 worldMatrix = geometryInstance.WorldMatrix;
-    float4x4 viewProjectionMatrix = camera.ViewProjectionMatrix;
-
-    output.InstanceId = instanceId;
-    output.Position = viewProjectionMatrix * worldMatrix * float4(input.Position, 1.0);
-    output.WorldPosition = (worldMatrix * float4(input.Position, 1.0)).xyz;
-    output.ModelViewPosition = (camera.ViewMatrix * worldMatrix * float4(input.Position, 1.0)).xyz;
-    output.WorldNormal = float3(normalize(worldMatrix * float4(input.Normal, 0.0)).xyz);
-    output.Normal = input.Normal;
+    output.Position = camera.ViewProjectionMatrix * geometryInstance.WorldMatrix * float4(input.Position, 1.0);
+    output.WorldPosition = (geometryInstance.WorldMatrix * float4(input.Position, 1.0)).xyz;
+    output.WorldNormal = float3(normalize(geometryInstance.WorldMatrix * float4(input.Normal, 0.0)).xyz);
     output.TextureCoordinates = input.TextureCoordinates;
     output.ViewDirection = camera.WorldPosition - output.WorldPosition;
 
@@ -66,12 +56,12 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
 {
     PixelOutput output = {};
     
-    MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.Normal, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
+    MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
 
     float3 lightSpacePosition;
     texture2d<float> lightShadowBuffer;
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
     {
         Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
         float4 rawPosition = lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1);
@@ -84,7 +74,7 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
         }
     }
 
-    float4 finalColor = float4(materialData.Albedo.rgb * ComputeLightContribution(light, lightShadowBuffer, lightSpacePosition, materialData.Normal), materialData.Albedo.a);
+    float4 finalColor = float4(ComputeLightContribution(light, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection)), materialData.Alpha);   
     float3 premultipliedColor = finalColor.rgb * float3(finalColor.a);
 
     float d = (input.Position.z);// / input.Position.w);

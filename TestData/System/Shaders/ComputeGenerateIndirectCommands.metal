@@ -92,6 +92,10 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
         if (!camera.DepthOnly)
         {
             command_buffer opaqueCommandBuffer = parameters.IndirectCommandBuffers[camera.OpaqueCommandListIndex];
+            
+            device atomic_uint* commandBufferCounter = (device atomic_uint*)&parameters.IndirectCommandBufferCounters[camera.OpaqueCommandListIndex];
+            atomic_fetch_add_explicit(commandBufferCounter, 1, metal::memory_order_relaxed);
+
             EncodeDrawCommand(opaqueCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, false, false);
 
             if (material.IsTransparent)

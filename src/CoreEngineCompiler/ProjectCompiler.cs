@@ -113,7 +113,7 @@ namespace CoreEngine.Compiler
                         Logger.WriteMessage($"{DateTime.Now.ToString(CultureInfo.InvariantCulture)} - Detected file change for '{sourceFile}'");
                     }
                     
-                    var result = await CompileSourceFile(sourceFileAbsoluteDirectory, sourceFile, destinationPath);
+                    var result = await CompileSourceFile(sourceFileAbsoluteDirectory, sourceFile, destinationPath, outputDirectory);
                     var resultDestinationFiles = new string[result.Length];
 
                     for (var i = 0; i < result.Span.Length; i++)
@@ -215,7 +215,7 @@ namespace CoreEngine.Compiler
             return sourceFileAbsoluteDirectory;
         }
 
-        private async ValueTask<Memory<string>> CompileSourceFile(string sourceFileAbsoluteDirectory, string sourceFile, string outputDirectory)
+        private async ValueTask<Memory<string>> CompileSourceFile(string sourceFileAbsoluteDirectory, string sourceFile, string outputDirectory, string rootOutputDirectory)
         {
             Logger.BeginAction($"Compiling '{Path.Combine(sourceFileAbsoluteDirectory, Path.GetFileName(sourceFile))}'");
             
@@ -232,7 +232,7 @@ namespace CoreEngine.Compiler
                 targetPlatform = "linux";
             }
 
-            var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile), Path.GetDirectoryName(sourceFile), outputDirectory);
+            var resourceCompilerContext = new CompilerContext(targetPlatform, Path.GetFileName(sourceFile), Path.GetDirectoryName(sourceFile), outputDirectory, rootOutputDirectory);
             
             try
             {
@@ -245,7 +245,7 @@ namespace CoreEngine.Compiler
 
                 else
                 {
-                    Logger.EndActionError();
+                    Logger.EndAction();
                 }
 
                 return result;

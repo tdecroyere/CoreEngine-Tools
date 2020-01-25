@@ -38,7 +38,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                 var line = reader.ReadLine()!;
 
                 // TODO: Wait for the Span<char> split method that is currenctly in dev
-                var lineParts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var lineParts = line.TrimStart(' ', '\t').Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
                 if (lineParts.Length > 1)
                 {
@@ -68,22 +68,20 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                     if (lineParts[0].ToLower() == "map_disp")
                     {
                         var texturePath = lineParts[1];
-                        var rootDirectory = Path.GetDirectoryName(context.OutputDirectory);
-                        currentNormalTexture = $"{context.OutputDirectory.Replace(rootDirectory, string.Empty)}/{Path.GetDirectoryName(texturePath)}/{Path.GetFileNameWithoutExtension(texturePath)}.texture";
+                        currentNormalTexture = ResolveTexturePath(context, texturePath);
                     }
 
                     else if (lineParts[0].ToLower() == "map_bump")
                     {
                         var texturePath = lineParts[1];
-                        var rootDirectory = Path.GetDirectoryName(context.OutputDirectory);
-                        currentBumpTexture = $"{context.OutputDirectory.Replace(rootDirectory, string.Empty)}/{Path.GetDirectoryName(texturePath)}/{Path.GetFileNameWithoutExtension(texturePath)}.texture";
+                        currentNormalTexture = ResolveTexturePath(context, texturePath);
+                        // currentBumpTexture = $"{context.OutputDirectory.Replace(rootDirectory, string.Empty)}/{Path.GetDirectoryName(texturePath)}/{Path.GetFileNameWithoutExtension(texturePath)}.texture";
                     }
 
                     else if (lineParts[0].ToLower() == "map_kd")
                     {
                         var texturePath = lineParts[1];
-                        var rootDirectory = Path.GetDirectoryName(context.OutputDirectory);
-                        currentDiffuseTexture = $"{context.OutputDirectory.Replace(rootDirectory, string.Empty)}/{Path.GetDirectoryName(texturePath)}/{Path.GetFileNameWithoutExtension(texturePath)}.texture";
+                        currentDiffuseTexture = ResolveTexturePath(context, texturePath);
                     }
 
                     else if (lineParts[0].ToLower() == "kd")
@@ -112,6 +110,26 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
             }
 
             return materials.ToArray();
+        }
+
+        private string ResolveTexturePath(CompilerContext context, string texturePath)
+        {
+            if (context.OutputDirectory == null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
+            texturePath = texturePath.Replace("\\", "/");
+            
+            var rootDirectory = context.RootOutputDirectory;
+            var inputDirectory = Path.GetFullPath(Path.Combine(context.OutputDirectory, Path.GetDirectoryName(texturePath)));
+
+            var outputTexturePath = $"{inputDirectory.Replace(rootDirectory, string.Empty)}/{Path.GetFileNameWithoutExtension(texturePath)}.texture";
+
+            Logger.WriteMessage(rootDirectory);
+            Logger.WriteMessage(inputDirectory);
+            Logger.WriteMessage(outputTexturePath);
+            return outputTexturePath;
         }
     }
 }

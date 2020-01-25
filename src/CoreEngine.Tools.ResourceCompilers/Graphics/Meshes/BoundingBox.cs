@@ -40,6 +40,14 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 			this.MaxPoint = new Vector3(maxX, maxY, maxZ);
 		}
 
+		public Vector3 Center
+		{
+			get
+			{
+                return (this.MinPoint + this.MaxPoint) * 0.5f;
+			}
+		}
+
         public override string ToString()
         {
             if (this.IsEmpty)

@@ -101,7 +101,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             using var buildProcess = new Process();
             buildProcess.StartInfo.FileName = "xcrun";
-            buildProcess.StartInfo.Arguments = $"-sdk macosx metal -ffast-math -gline-tables-only -MO -I {includeDirectory} -c {inputShaderFile} -o {outputAirFile}";
+            buildProcess.StartInfo.Arguments = $"-sdk macosx metal -gline-tables-only -MO -I {includeDirectory} -c {inputShaderFile} -o {outputAirFile}";
 
             buildProcess.Start();
             buildProcess.WaitForExit();

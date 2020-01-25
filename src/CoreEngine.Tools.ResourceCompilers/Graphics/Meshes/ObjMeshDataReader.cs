@@ -54,13 +54,10 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                             
                             if (currentSubObject.IndexCount > 0)
                             {
-                                Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
-
                                 result.MeshSubObjects.Add(currentSubObject);
                             }
                         }
 
-                        Logger.WriteMessage($"Reading sub-object: {(lineParts.Length > 1 ? lineParts[1] : "no-name")}");
                         currentSubObject = new MeshSubObject();
                         currentSubObject.StartIndex = (uint)result.Indices.Count;
                         vertexDictionary.Clear();
@@ -88,8 +85,29 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                     else if (currentSubObject != null && lineParts[0] == "usemtl")
                     {
-                        currentSubObject.MaterialPath = lineParts[1];
-                        Logger.WriteMessage($"Material: {currentSubObject.MaterialPath}");
+                        if (((uint)result.Indices.Count - currentSubObject.StartIndex) > 0)
+                        {
+                            if (currentSubObject != null)
+                            {
+                                currentSubObject.IndexCount = (uint)result.Indices.Count - currentSubObject.StartIndex;
+                                
+                                if (currentSubObject.IndexCount > 0)
+                                {
+                                    result.MeshSubObjects.Add(currentSubObject);
+                                }
+                            }
+
+                            currentSubObject = new MeshSubObject();
+                            currentSubObject.StartIndex = (uint)result.Indices.Count;
+                            vertexDictionary.Clear();
+
+                            currentSubObject.MaterialPath = lineParts[1];
+                        }
+
+                        else
+                        {
+                            currentSubObject.MaterialPath = lineParts[1];
+                        }
                     }
                 }
             }
@@ -100,7 +118,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                 if (currentSubObject.IndexCount > 0)
                 {
-                    Logger.WriteMessage($"Readed Indices: {currentSubObject.IndexCount}");
                     result.MeshSubObjects.Add(currentSubObject);
                 }
             }

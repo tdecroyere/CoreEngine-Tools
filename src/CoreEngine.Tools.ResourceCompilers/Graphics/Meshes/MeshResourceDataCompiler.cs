@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
 using CoreEngine.Tools.Common;
@@ -20,7 +21,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
         {
             get
             {
-                return new string[] { ".obj" };
+                return new string[] { ".obj", ".fbx" };
             }
         }
 
@@ -50,19 +51,20 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                 meshDataReader = new ObjMeshDataReader();
             }
 
+            else if (Path.GetExtension(context.SourceFilename) == ".fbx")
+            {
+                meshDataReader = new FbxMeshDataReader(Path.Combine(context.InputDirectory, context.SourceFilename));
+            }
+
             if (meshDataReader != null)
             {
                 var meshData = await meshDataReader.ReadAsync(sourceData);
 
                 if (meshData != null)
                 {
-                    // TODO: Optimize mesh indices
-
                     // Compute Bounding Boxes
                     foreach (var subObject in meshData.MeshSubObjects)
                     {
-                        Logger.BeginAction($"Computing Bounding Box");
-
                         for (var i = 0; i < subObject.IndexCount; i++)
                         {
                             var index = meshData.Indices[i + (int)subObject.StartIndex];
@@ -70,9 +72,27 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                             subObject.BoundingBox.Add(vertex.Position);
                         }
+                    }
 
-                        Logger.WriteMessage($"Bounding Box: {subObject.BoundingBox}");
-                        Logger.EndAction();
+                    // TODO: Optimize mesh instances 
+                    Logger.WriteMessage($"Before - Mesh SubObjects: {meshData.MeshSubObjects.Count} - Vertex Buffer Count: {meshData.Vertices.Count} - Index Buffer Count: {meshData.Indices.Count}");
+
+                    meshData = OptimizeMesh(meshData);
+
+                    Logger.WriteMessage($"After - Mesh SubObjects: {meshData.MeshSubObjects.Count} - Vertex Buffer Count: {meshData.Vertices.Count} - Index Buffer Count: {meshData.Indices.Count}");
+                    
+                    // TODO: Optimize mesh indices
+
+                    // Compute Bounding Boxes
+                    foreach (var subObject in meshData.MeshSubObjects)
+                    {
+                        for (var i = 0; i < subObject.IndexCount; i++)
+                        {
+                            var index = meshData.Indices[i + (int)subObject.StartIndex];
+                            var vertex = meshData.Vertices[(int)index];
+
+                            subObject.BoundingBox.Add(vertex.Position);
+                        }
                     }
 
                     var destinationMemoryStream = new MemoryStream();
@@ -138,6 +158,67 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             }
 
             return null;
+        }
+
+        // TODO: Implement BVH to optimize GPU culling
+
+        private MeshData OptimizeMesh(MeshData mesh)
+        {
+            // TODO: Compute the max object space based on the global bounding box of the mesh
+            var maxObjectSpace = 1000;
+
+            var result = new MeshData();
+
+            var vertexIndexList = new Dictionary<MeshVertex, int>();
+            var currentSubMesh = new MeshSubObject();
+
+            foreach (var subMesh in mesh.MeshSubObjects.OrderBy(x => x.MaterialPath))
+            {
+                // if (currentSubMesh.MaterialPath != subMesh.MaterialPath || ((currentSubMesh.BoundingBox.Center - subMesh.BoundingBox.Center).Length() > maxObjectSpace))
+                // {
+                    currentSubMesh.BoundingBox = new BoundingBox();
+                    currentSubMesh.IndexCount = (uint)(result.Indices.Count - currentSubMesh.StartIndex);
+
+                    if (currentSubMesh.IndexCount > 0)
+                    {
+                        result.MeshSubObjects.Add(currentSubMesh);
+                    }
+
+                    vertexIndexList.Clear();
+                    //vertexIndexList = new Dictionary<MeshVertex, int>();
+                    currentSubMesh = new MeshSubObject();
+                    currentSubMesh.MaterialPath = subMesh.MaterialPath;
+                    currentSubMesh.StartIndex = (uint)result.Indices.Count;
+                    currentSubMesh.BoundingBox = subMesh.BoundingBox;
+                //}
+
+                for (var i = (int)subMesh.StartIndex; i < (subMesh.StartIndex + subMesh.IndexCount); i++)
+                {
+                    var index = mesh.Indices[i];
+                    var vertex = mesh.Vertices[(int)index];
+
+                    if (!vertexIndexList.ContainsKey(vertex))
+                    {
+                        vertexIndexList.Add(vertex, result.Vertices.Count);
+                        result.Indices.Add((uint)result.Vertices.Count);
+                        result.Vertices.Add(vertex);
+                    }
+
+                    else
+                    {
+                        result.Indices.Add((uint)vertexIndexList[vertex]);
+                    }
+                }
+            }
+
+            currentSubMesh.IndexCount = (uint)(result.Indices.Count - currentSubMesh.StartIndex);
+
+            if (currentSubMesh.IndexCount > 0)
+            {
+                result.MeshSubObjects.Add(currentSubMesh);
+            }
+
+            return result;
         }
     }
 }

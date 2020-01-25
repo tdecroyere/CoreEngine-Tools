@@ -70,8 +70,6 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
     uint2 pixel = uint2(input.TextureCoordinates.x * shaderParameters.InputTexture.get_width(), input.TextureCoordinates.y * shaderParameters.InputTexture.get_height());  
 
     float4 inputColor = shaderParameters.InputTexture.read(pixel, 0);
-    //float4 inputColor = float4(0, 0, 1, 1);//parameters.InputTexture.read(pixelCoordinates);
-
     output.Color = inputColor;
     return output; 
 }

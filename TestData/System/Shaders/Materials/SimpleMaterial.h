@@ -15,6 +15,7 @@ struct SimpleMaterial
     int DiffuseTexture;
     int NormalTexture;
     int BumpTexture;
+    int SpecularTexture;
 };
 
 float3 ResolveNormalFromSurfaceGradient(float3 nrmBaseNormal, float3 surfGrad)
@@ -79,20 +80,26 @@ float2 NoParallax(texture2d<float> normalTexture, sampler texture_sampler, float
     return offsetCoord;
 }
 
-MaterialData ProcessSimpleMaterial(float3 position, float3 normal, float3 worldNormal, float3 viewDirection, bool depthOnly, float2 textureCoordinates, const device void* material, int materialTextureOffset, const device ShaderParameters& shaderParameters)
+MaterialData ProcessSimpleMaterial(float3 position, float3 worldNormal, float3 viewDirection, bool depthOnly, float2 textureCoordinates, const device void* material, int materialTextureOffset, const device ShaderParameters& shaderParameters)
 {
     MaterialData materialData = {};
 
     const device SimpleMaterial& simpleMaterial = *((const device SimpleMaterial*)material);
 
+    texture2d<float> diffuseTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.DiffuseTexture);
+    texture2d<float> normalTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.NormalTexture);
+    texture2d<float> specularTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.SpecularTexture);
+    texture2d<float> bumpTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.BumpTexture);
+
     materialData.Normal = worldNormal;
-    materialData.Albedo = simpleMaterial.DiffuseColor.a > 0 ? float4(simpleMaterial.DiffuseColor) : float4(1, 1, 1, 1);
+    materialData.Albedo = (simpleMaterial.DiffuseColor.a > 0) ? simpleMaterial.DiffuseColor.rgb : float3(1, 1, 1);
+    materialData.Alpha = (simpleMaterial.DiffuseColor.a > 0) ? simpleMaterial.DiffuseColor.a : 1.0;
 
     if (!depthOnly && simpleMaterial.NormalTexture > 0 && !(worldNormal.x == 0 && worldNormal.y == 0 && worldNormal.z == 0))
     {
         if (simpleMaterial.BumpTexture > 0)
         {
-            float3  N            = normalize(normal);
+            float3  N            = normalize(worldNormal);
             float3  dp1          = dfdx( -viewDirection.xyz );
             float3  dp2          = dfdy( -viewDirection.xyz );
             float2  duv1         = dfdx( textureCoordinates );
@@ -105,32 +112,48 @@ MaterialData ProcessSimpleMaterial(float3 position, float3 normal, float3 worldN
 
             float3 texDir3D = normalize( transpose(tbnMat) * -viewDirection );
 
-            texture2d<float> bumpTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.BumpTexture);
             textureCoordinates = NoParallax(bumpTexture, texture_sampler, texDir3D, textureCoordinates);
         }
 
-        texture2d<float> normalTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.NormalTexture);
-
         float2 textureColor = normalTexture.sample(texture_sampler, textureCoordinates).rg * 2.0 - 1.0;
-        float3 nrmBaseNormal = normalize(normal);
+        float3 nrmBaseNormal = normalize(worldNormal);
         float3 surfaceGradient = float3(TspaceNormalToDerivative(textureColor), 0);
         materialData.Normal = ResolveNormalFromSurfaceGradient(nrmBaseNormal, surfaceGradient);
     }
 
     if (simpleMaterial.DiffuseTexture > 0)
     {
-        texture2d<float> diffuseTexture = GetTexture(shaderParameters, materialTextureOffset, simpleMaterial.DiffuseTexture);
         float4 textureDiffuseColor = diffuseTexture.sample(texture_sampler, textureCoordinates);
+        float lod = diffuseTexture.calculate_clamped_lod(texture_sampler, textureCoordinates);
+        
+        if (lod > 0)
+        {
+            if (textureDiffuseColor.a < 0.5)
+                textureDiffuseColor.a = 0;
+            
+            if (textureDiffuseColor.a > 0)
+                textureDiffuseColor.a = 1;
+        }
 
         if (textureDiffuseColor.a == 1)
         {
-            materialData.Albedo = float4(textureDiffuseColor.rgb, materialData.Albedo.a);
+            materialData.Albedo = textureDiffuseColor.rgb;
         }
 
         else
         {
-            materialData.Albedo = textureDiffuseColor;
+            materialData.Albedo = textureDiffuseColor.rgb;
+            materialData.Alpha = textureDiffuseColor.a;
         }
+    }
+
+    if (!depthOnly && simpleMaterial.SpecularTexture > 0)
+    {
+        float4 specularColor = specularTexture.sample(texture_sampler, textureCoordinates);
+
+        materialData.Occlusion = specularColor.r;
+        materialData.Roughness = specularColor.g;
+        materialData.Metallic = specularColor.b;
     }
 
     return materialData;

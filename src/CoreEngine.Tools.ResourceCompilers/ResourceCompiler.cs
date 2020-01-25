@@ -9,11 +9,11 @@ namespace CoreEngine.Tools.ResourceCompilers
 {
     public class ResourceCompiler
     {
-        private IDictionary<string, ResourceDataCompiler> dataCompilers;
+        private IDictionary<string, List<ResourceDataCompiler>> dataCompilers;
 
         public ResourceCompiler()
         {
-            this.dataCompilers = new Dictionary<string, ResourceDataCompiler>();
+            this.dataCompilers = new Dictionary<string, List<ResourceDataCompiler>>();
 
             AddInternalDataCompilers();
         }
@@ -21,16 +21,6 @@ namespace CoreEngine.Tools.ResourceCompilers
         public IList<string> GetSupportedSourceFileExtensions()
         {
             return new List<string>(this.dataCompilers.Keys);
-        }
-
-        public string GetDestinationFileExtension(string sourceFileExtension)
-        {
-            if (!this.dataCompilers.ContainsKey(sourceFileExtension))
-            {
-                throw new ArgumentException($"Extension: {sourceFileExtension} is not supported by the compiler");
-            }
-
-            return this.dataCompilers[sourceFileExtension].DestinationExtension;
         }
 
         // TODO: Replace parameters by structs
@@ -48,26 +38,32 @@ namespace CoreEngine.Tools.ResourceCompilers
                 throw new ArgumentException($"Source file extension: {sourceFileExtension} is not supported by the compiler");
             }
 
-            var dataCompiler = this.dataCompilers[sourceFileExtension];
+            var dataCompilers = this.dataCompilers[sourceFileExtension];
 
             try
             {
                 // TODO: Find a way to avoid copy data when using FileStream?
                 var inputData = new ReadOnlyMemory<byte>(await File.ReadAllBytesAsync(inputPath));
-                var outputResources = await dataCompiler.CompileAsync(inputData, context);
-                
-                if (outputResources.Length > 0)
+                var outputResources = new List<ResourceEntry>();
+
+                foreach (var dataCompiler in dataCompilers)
                 {
-                    var result = new string[outputResources.Length];
+                    var output = await dataCompiler.CompileAsync(inputData, context);
+                    outputResources.AddRange(output.ToArray());
+                }
+                
+                if (outputResources.Count > 0)
+                {
+                    var result = new string[outputResources.Count];
 
                     if (!Directory.Exists(context.OutputDirectory))
                     {
                         Directory.CreateDirectory(context.OutputDirectory);
                     }
 
-                    for (var i = 0; i < outputResources.Length; i++)
+                    for (var i = 0; i < outputResources.Count; i++)
                     {
-                        var outputResource = outputResources.Span[i];
+                        var outputResource = outputResources[i];
                         var outputPath = Path.Combine(context.OutputDirectory, outputResource.Filename);
                         result[i] = outputPath;
 
@@ -100,7 +96,12 @@ namespace CoreEngine.Tools.ResourceCompilers
                     {
                         foreach (var supportedExtension in dataCompiler.SupportedSourceExtensions)
                         {
-                            this.dataCompilers.Add(supportedExtension, dataCompiler);
+                            if (!this.dataCompilers.ContainsKey(supportedExtension))
+                            {
+                                this.dataCompilers.Add(supportedExtension, new List<ResourceDataCompiler>());
+                            }
+
+                            this.dataCompilers[supportedExtension].Add(dataCompiler);
                         }
                     }
                 }

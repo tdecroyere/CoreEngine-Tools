@@ -45,7 +45,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
         {
             get
             {
-                return new string[] { ".cematerial", ".mtl" };
+                return new string[] { ".cematerial", ".mtl", ".fbx" };
             }
         }
 
@@ -71,6 +71,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
             if (Path.GetExtension(context.SourceFilename) == ".mtl")
             {
                 materialDataReader = new ObjMaterialDataReader();
+            }
+
+            else if (Path.GetExtension(context.SourceFilename) == ".fbx")
+            {
+                materialDataReader = new FbxMaterialDataReader();
             }
 
             else
@@ -165,7 +170,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                 destinationMemoryStream.Flush();
 
                 var resourceData = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
-                var resourceEntry = new ResourceEntry($"{Path.GetFileNameWithoutExtension(material.Name)}{this.DestinationExtension}", resourceData);
+                var resourceEntry = new ResourceEntry($"{material.Name}{this.DestinationExtension}", resourceData);
 
                 resourceEntries[i] = resourceEntry;
             }
