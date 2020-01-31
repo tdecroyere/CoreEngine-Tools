@@ -66,19 +66,26 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
             subMesh.StartIndex = (uint)meshData.Indices.Count;
             subMesh.MaterialPath = scene.Materials[mesh.MaterialIndex].Name;
             
-            for (var i = 0; i < mesh.VertexCount; i++)
+            for (var i = 0; i < mesh.FaceCount; i++)
             {
-                var vertex = new MeshVertex();
+                var face = mesh.Faces[i];
 
-                var fbxVertex = transform * mesh.Vertices[i];
-                var fbxNormal = (Matrix3x3)transform * mesh.Normals[i];
+                for (var j = 0; j < face.IndexCount; j++)
+                {
+                    var vertex = new MeshVertex();
 
-                vertex.Position = new Vector3(fbxVertex.X, fbxVertex.Y, fbxVertex.Z);
-                vertex.Normal = new Vector3(fbxNormal.X, fbxNormal.Y, fbxNormal.Z);
-                vertex.TextureCoordinates = new Vector2(mesh.TextureCoordinateChannels[0][i].X, -mesh.TextureCoordinateChannels[0][i].Y);
+                    var fbxIndex = face.Indices[face.IndexCount - 1 - j];
 
-                meshData.Indices.Add((uint)meshData.Vertices.Count);
-                meshData.Vertices.Add(vertex);
+                    var fbxVertex = transform * mesh.Vertices[fbxIndex];
+                    var fbxNormal = (Matrix3x3)transform * mesh.Normals[fbxIndex];
+
+                    vertex.Position = new Vector3(fbxVertex.X, fbxVertex.Y, fbxVertex.Z);
+                    vertex.Normal = new Vector3(fbxNormal.X, fbxNormal.Y, fbxNormal.Z);
+                    vertex.TextureCoordinates = new Vector2(mesh.TextureCoordinateChannels[0][fbxIndex].X, -mesh.TextureCoordinateChannels[0][fbxIndex].Y);
+
+                    meshData.Indices.Add((uint)meshData.Vertices.Count);
+                    meshData.Vertices.Add(vertex);
+                }
             }
 
             subMesh.IndexCount = (uint)meshData.Indices.Count - subMesh.StartIndex;

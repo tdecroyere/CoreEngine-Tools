@@ -14,6 +14,7 @@ struct VertexOutput
     float4 Position [[position]];
     float2 TextureCoordinates;
     uint InstanceId [[flat]];
+    bool IsOpaque [[flat]];
 };
 
 struct RenderPassParameters
@@ -27,6 +28,7 @@ struct RectangleSurface
     float2 TextureMinPoint;
     float2 TextureMaxPoint;
     int TextureIndex;
+    bool IsOpaque;
 };
 
 struct ShaderParameters
@@ -72,6 +74,8 @@ vertex VertexOutput VertexMain(const uint vertexId [[vertex_id]],
     {
         output.TextureCoordinates = float2(maxPoint.x, maxPoint.y);
     }
+
+    output.IsOpaque = parameters.RectangleSurfaces[instanceId].IsOpaque;
     
     return output;
 }
@@ -95,12 +99,20 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
 
     float4 textureColor = diffuseTexture.sample(texture_sampler, input.TextureCoordinates);
 
-    if (textureColor.a == 0)
+    if (!input.IsOpaque)
     {
-        discard_fragment();
+        if (textureColor.a == 0)
+        {
+            discard_fragment();
+        }
+        
+        output.Color = textureColor;
     }
-    
-    output.Color = textureColor;
+
+    else
+    {
+        output.Color = float4(textureColor.rgb, 1);
+    }
 
     return output; 
 }

@@ -43,7 +43,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
 
                     var texturePath = Path.GetFullPath(Path.Combine(context.InputDirectory, Path.GetDirectoryName(fbxMaterial.TextureDiffuse.FilePath))) + "/" + fbxMaterial.TextureDiffuse.FilePath.Replace('\\', '/');
                     var image = Surface.LoadFromFile(texturePath);
-                    material.IsTransparent = image.IsTransparent;
+                    material.IsTransparent = image.IsTransparent || fbxMaterial.HasColorTransparent;
                 }
 
                 var normalTexture = string.Empty;

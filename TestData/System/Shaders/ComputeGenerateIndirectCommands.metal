@@ -83,7 +83,13 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
 
     const device Light& testLight = parameters.Lights[0];
 
-    const device Camera& camera = parameters.Cameras[cameraIndex];
+    device Camera& camera = parameters.Cameras[cameraIndex];
+
+    if (camera.AlreadyProcessed)
+    {
+        return;
+    }
+
     BoundingFrustum cameraFrustum = camera.BoundingFrustum;
     BoundingBox worldBoundingBox = geometryInstance.WorldBoundingBox;
 
@@ -117,4 +123,6 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
             EncodeDrawCommand(transparentDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, true, true);
         }
     }
+
+    camera.AlreadyProcessed = true;
 }

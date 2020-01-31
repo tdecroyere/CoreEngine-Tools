@@ -60,10 +60,11 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
 
     float3 lightSpacePosition;
     texture2d<float> lightShadowBuffer;
+    Camera lightCamera;
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
-        Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
+        lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
         float4 rawPosition = lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1);
         lightSpacePosition = rawPosition.xyz / rawPosition.w;
 
@@ -74,7 +75,7 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
         }
     }
 
-    float4 finalColor = float4(ComputeLightContribution(light, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection)), materialData.Alpha);   
+    float4 finalColor = float4(ComputeLightContribution(light, lightCamera, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection)), materialData.Alpha);   
     float3 premultipliedColor = finalColor.rgb * float3(finalColor.a);
 
     float d = (input.Position.z);// / input.Position.w);

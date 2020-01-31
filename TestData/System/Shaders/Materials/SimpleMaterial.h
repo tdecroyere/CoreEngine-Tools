@@ -151,7 +151,7 @@ MaterialData ProcessSimpleMaterial(float3 position, float3 worldNormal, float3 v
     {
         float4 specularColor = specularTexture.sample(texture_sampler, textureCoordinates);
 
-        materialData.Occlusion = specularColor.r;
+        materialData.Occlusion = specularColor.a;
         materialData.Roughness = specularColor.g;
         materialData.Metallic = specularColor.b;
     }

@@ -50,10 +50,11 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
 
     float3 lightSpacePosition;
     texture2d<float> lightShadowBuffer;
+    Camera lightCamera;
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
-        Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
+        lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
         float4 rawPosition = lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1);
         lightSpacePosition = rawPosition.xyz / rawPosition.w;
 
@@ -64,15 +65,14 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
         }
     }
 
-    float3 outputColor = ComputeLightContribution(light, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection));
-    //float3 outputColor = ComputeLightContribution(materialData.Normal);
+    float3 outputColor = ComputeLightContribution(light, lightCamera, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection));
 
     output.OpaqueColor = float4(outputColor, 1);
 
     // TODO: Move all debug overlay to a debug shader
     //output.OpaqueColor = DebugAddCascadeColors(output.OpaqueColor, shaderParameters, light, input.WorldPosition);
 
-    //output.OpaqueColor = float4(materialData.Albedo, 1);
+    //output.OpaqueColor = float4(materialData.Occlusion,materialData.Occlusion,materialData.Occlusion, 1);
     //output.OpaqueColor = float4(materialData.Normal * 0.5 + 0.5, 1);
     //output.OpaqueColor = float4(materialData.Roughness, materialData.Roughness, materialData.Roughness, 1);
     //output.OpaqueColor = float4(input.TextureCoordinates.rgr, 1);

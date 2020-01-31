@@ -49,18 +49,22 @@ struct Camera
     float4x4 ViewMatrix;
     float4x4 ProjectionMatrix;
     float4x4 ViewProjectionMatrix;
+    float4x4 ViewProjectionInverse;
     BoundingFrustum BoundingFrustum;
     int OpaqueCommandListIndex;
     int OpaqueDepthCommandListIndex;
     int TransparentCommandListIndex;
     int TransparentDepthCommandListIndex;
     bool DepthOnly;
+    bool AlreadyProcessed;
+    float MinDepth;
+    float MaxDepth;
 };
 
 struct Light
 {
     packed_float3 WorldSpacePosition;
-    int CameraIndexes[4];
+    int CameraIndexes[5];
 };
 
 struct Material
@@ -80,7 +84,7 @@ struct SceneProperties
 struct ShaderParameters
 {
     const device SceneProperties& SceneProperties [[id(0)]];
-    const device Camera* Cameras [[id(1)]];
+    device Camera* Cameras [[id(1)]];
     const device Light* Lights [[id(2)]];
     const device Material* Materials [[id(3)]];
     const device GeometryPacket* GeometryPackets [[id(4)]];
@@ -112,8 +116,14 @@ texture2d<float> GetTexture(const device ShaderParameters& shaderParameters, int
     return shaderParameters.Textures[materialTextureOffset + (materialTextureIndex - 1)];
 }
 
-float ComputeLightShadow(Light light, float3 normal, texture2d<float> shadowMap, float3 lightSpacePosition)
+float ComputeLightShadow(Light light, Camera lightCamera, float3 normal, texture2d<float> shadowMap, float3 lightSpacePosition)
 {
+    // constexpr sampler depthTextureSampler(mag_filter::linear,
+    //                                   min_filter::linear,
+    //                                   mip_filter::linear, 
+    //                                   address::clamp_to_border,
+    //                                   border_color::opaque_white, max_anisotropy(8));
+
     constexpr sampler depthTextureSampler(mag_filter::nearest,
                                       min_filter::nearest,
                                       mip_filter::nearest, 
@@ -123,10 +133,10 @@ float ComputeLightShadow(Light light, float3 normal, texture2d<float> shadowMap,
     float2 shadowUv = lightSpacePosition.xy * float2(0.5, -0.5) + 0.5;
     float shadowMapDepth = shadowMap.sample(depthTextureSampler, shadowUv).r;
 
-    float minBias = 0.06;
+    float minBias = 0.11;
     float maxBias = 0.501;
 
-    //float bias = max(maxBias * (1.0 - dot(normal, normalize(light.Camera1.WorldPosition))), minBias);  
+    //float bias = max(maxBias * (1.0 - dot(normal, normalize(lightCamera.WorldPosition))), 0.235);  
     float bias = max(maxBias * (1.0 - shadowMapDepth), minBias);  
     
     float lightSpaceDepth = lightSpacePosition.z - bias;
@@ -226,30 +236,37 @@ float3 EvaluateBrdf(MaterialData materialData, float3 viewDirection, float3 ligh
 
 float3 ComputeIBL(float3 viewDirection, MaterialData materialData, texturecube<float> environmentMap, texturecube<float> irradianceEnvironmentMap)
 {
+    constexpr sampler env_texture_sampler(mag_filter::linear,
+                                        min_filter::linear,
+                                        mip_filter::linear, address::repeat, max_anisotropy(8));
+    
     float diffuseScale = 2.5;
     float specularScale = 3;
     float reflectance = 0.5;
     float invMetallic = 1.0 - materialData.Metallic;
 
-    constexpr sampler env_texture_sampler(mag_filter::linear,
-                                      min_filter::linear,
-                                      mip_filter::linear, address::repeat, max_anisotropy(8));
-
-    float3 reflectionVector = materialData.Normal;//reflect(-viewDirection, materialData.Normal);
-
-    float4 cubeMapSample = irradianceEnvironmentMap.sample(env_texture_sampler, reflectionVector);
-    float3 diffuseIBL = cubeMapSample.rgb * materialData.Albedo * invMetallic;;
-
-    reflectionVector = reflect(-viewDirection, materialData.Normal);
-
-    cubeMapSample = environmentMap.sample(env_texture_sampler, reflectionVector);
+    float3 diffuseColor = materialData.Albedo * invMetallic;
     float3 specularColor = 0.16 * reflectance * reflectance * invMetallic + materialData.Albedo * materialData.Metallic;
+
+    float3 diffuseIBL = 0.0;
+
+    if (!all(diffuseColor.xyz == 0))
+    {
+        float3 reflectionVector = materialData.Normal;//reflect(-viewDirection, materialData.Normal);
+
+        float4 cubeMapSample = irradianceEnvironmentMap.sample(env_texture_sampler, reflectionVector);
+        diffuseIBL = cubeMapSample.rgb * diffuseColor;
+    }
+
+    float3 reflectionVector = reflect(-viewDirection, materialData.Normal);
+
+    float4 cubeMapSample = environmentMap.sample(env_texture_sampler, reflectionVector);
     float3 specularIBL = cubeMapSample.rgb * specularColor;
 
     return diffuseIBL * diffuseScale + specularIBL * specularScale;
 }
 
-float3 ComputeLightContribution(Light light, MaterialData materialData, texture2d<float> shadowMap, texturecube<float> environmentMap, texturecube<float> irradianceEnvironmentMap, float3 lightSpacePosition, float3 viewDirection)
+float3 ComputeLightContribution(Light light, Camera lightCamera, MaterialData materialData, texture2d<float> shadowMap, texturecube<float> environmentMap, texturecube<float> irradianceEnvironmentMap, float3 lightSpacePosition, float3 viewDirection)
 {
     constexpr sampler env_texture_sampler(mag_filter::linear,
                                       min_filter::linear,
@@ -266,7 +283,7 @@ float3 ComputeLightContribution(Light light, MaterialData materialData, texture2
     
     if (!is_null_texture(shadowMap))
     {
-        lightShadow = ComputeLightShadow(light, materialData.Normal, shadowMap, lightSpacePosition);
+        lightShadow = ComputeLightShadow(light, lightCamera, materialData.Normal, shadowMap, lightSpacePosition);
     }
 
     // float3 lightContribution = lightColor * saturate(dot(normalize(light.WorldSpacePosition), materialData.Normal));
@@ -282,17 +299,19 @@ float3 ComputeLightContribution(Light light, MaterialData materialData, texture2
 
 float4 DebugAddCascadeColors(float4 fragmentColor, const device ShaderParameters& shaderParameters, Light light, float3 worldPosition)
 {
-    float4 cascadeColors[4] = 
+    float4 cascadeColors[6] = 
     {
         float4(1, 0, 0, 1),
         float4(0, 1, 0, 1),
         float4(0, 0, 1, 1),
-        float4(1, 1, 0, 1)
+        float4(1, 1, 0, 1),
+        float4(1, 0, 1, 1),
+        float4(0, 1, 1, 1)
     };
 
-    float4 cascadeColor = cascadeColors[3];
+    float4 cascadeColor = cascadeColors[5];
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
         Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
         float4 rawPosition = ((lightCamera.ProjectionMatrix * lightCamera.ViewMatrix)) * float4(worldPosition, 1);
@@ -305,7 +324,7 @@ float4 DebugAddCascadeColors(float4 fragmentColor, const device ShaderParameters
         }
     }
 
-    float alpha = 0.1;
+    float alpha = 0.75;
     return cascadeColor * alpha + fragmentColor * (1 - alpha);
 }
 
