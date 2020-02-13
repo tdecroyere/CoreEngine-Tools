@@ -63,15 +63,7 @@ float MinComponent(float3 v)
     return min(min(v.x, v.y), v.z);
 };
 
-float3 ToneMapACES(float3 x)
-{
-    float a = 2.51f;
-    float b = 0.03f;
-    float c = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
-    return saturate((x*(a*x+b))/(x*(c*x+d)+e));
-}
+
 
 float4 ResolveTexturePixel(const device texture2d_ms<float>& texture, float2 textureCoordinates)
 {
@@ -103,7 +95,7 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
     if (modulation == 1)
     {
         output.Color = opaqueColor;
-        output.Color.rgb = ToneMapACES(output.Color.rgb * exposure);
+        //output.Color.rgb = ToneMapACES(output.Color.rgb * exposure);
 
         return output;
     }
@@ -128,7 +120,7 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
     output.Color = float4(opaqueColor.rgb * modulation + (transparentColor.rgb * (1 - modulation) / float3(max(transparentColor.a, 0.00001))), 1.0);
 
     
-    output.Color.rgb = ToneMapACES(output.Color.rgb * exposure);
+    //output.Color.rgb = ToneMapACES(output.Color.rgb * exposure);
 
     return output; 
 }

@@ -52,15 +52,14 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
     texture2d<float> lightShadowBuffer;
     Camera lightCamera;
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
     {
         lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
-        float4 rawPosition = lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1);
-        lightSpacePosition = rawPosition.xyz / rawPosition.w;
+        lightSpacePosition = (lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1)).xyz;
 
         if (all(lightSpacePosition.xyz < 1.0) && all(lightSpacePosition.xyz > float3(-1,-1,0)))
         {
-            lightShadowBuffer = shaderParameters.Textures[lightCamera.DepthBufferTextureIndex];
+            lightShadowBuffer = shaderParameters.Textures[lightCamera.MomentShadowMapTextureIndex];
             break;
         }
     }

@@ -59,12 +59,13 @@ struct Camera
     bool AlreadyProcessed;
     float MinDepth;
     float MaxDepth;
+    int MomentShadowMapTextureIndex;
 };
 
 struct Light
 {
     packed_float3 WorldSpacePosition;
-    int CameraIndexes[5];
+    int CameraIndexes[4];
 };
 
 struct Material
@@ -115,6 +116,222 @@ texture2d<float> GetTexture(const device ShaderParameters& shaderParameters, int
 {
     return shaderParameters.Textures[materialTextureOffset + (materialTextureIndex - 1)];
 }
+
+float4 ConvertOptimizedMoments(float4 optimizedMoments)
+{
+    optimizedMoments[0] -= 0.035955884801f;
+    return float4x4(0.2227744146f, 0.1549679261f, 0.1451988946f, 0.163127443f,
+                                          0.0771972861f, 0.1394629426f, 0.2120202157f, 0.2591432266f,
+                                          0.7926986636f, 0.7963415838f, 0.7258694464f, 0.6539092497f,
+                                          0.0319417555f,-0.1722823173f,-0.2758014811f,-0.3376131734f) * optimizedMoments;
+}
+
+float mad(float m, float a, float b)
+{
+    return m * a + b;
+}
+
+float Linstep(float a, float b, float v)
+{
+    return saturate((v - a) / (b - a));
+}
+
+// Reduces VSM light bleedning
+float ReduceLightBleeding(float pMax, float amount)
+{
+  // Remove the [0, amount] tail and linearly rescale (amount, 1].
+   return Linstep(amount, 1.0f, pMax);
+}
+
+float4 Convert4MomentToCanonical(float4 Moments0, float MomentBias=3.0e-7f)
+{
+	return mix(Moments0,float4(0.0f,0.375f,0.0f,0.375f),MomentBias);
+}
+
+float Compute4MomentShadowIntensity(float4 Biased4Moments, float FragmentDepth,float DepthBias)
+{
+    float OutShadowIntensity = 0;
+
+	// Use short-hands for the many formulae to come
+	float4 b=Biased4Moments;
+	float3 z;
+	z[0]=FragmentDepth-DepthBias;
+
+	// Compute a Cholesky factorization of the Hankel matrix B storing only non-
+	// trivial entries or related products
+	float L21D11=mad(-b[0],b[1],b[2]);
+	float D11=mad(-b[0],b[0], b[1]);
+	float InvD11=1.0f/D11;
+	float L21=L21D11*InvD11;
+	float SquaredDepthVariance=mad(-b[1],b[1], b[3]);
+	float D22=mad(-L21D11,L21,SquaredDepthVariance);
+
+	// Obtain a scaled inverse image of bz=(1,z[0],z[0]*z[0])^T
+	float3 c=float3(1.0f,z[0],z[0]*z[0]);
+	// Forward substitution to solve L*c1=bz
+	c[1]-=b.x;
+	c[2]-=b.y+L21*c[1];
+	// Scaling to solve D*c2=c1
+	c[1]*=InvD11;
+	c[2]/=D22;
+	// Backward substitution to solve L^T*c3=c2
+	c[1]-=L21*c[2];
+	c[0]-=dot(c.yz,b.xy);
+	// Solve the quadratic equation c[0]+c[1]*z+c[2]*z^2 to obtain solutions z[1] 
+	// and z[2]
+	float InvC2=1.0f/c[2];
+	float p=c[1]*InvC2;
+	float q=c[0]*InvC2;
+	float D=((p*p)/4.0f)-q;
+	float r=sqrt(D);
+	z[1]=-(p/2.0f)-r;
+	z[2]=-(p/2.0f)+r;
+
+	// Use a solution made of four deltas if the solution with three deltas is 
+	// invalid
+	
+    if(z[1]<-1.0f || z[2]>1.0f){
+		float zFree=((b[0]-b[2])*z[0]+b[3]-b[1])/(z[0]+b[2]-b[0]-b[1]*z[0]);
+		float w1Factor=(z[0]>zFree)?1.0f:0.0f;
+		// Construct a polynomial taking value zero at z[0] and 1, value 1 at -1 and 
+		// value w1Factor at zFree. Start with a linear part and then multiply by 
+		// linear factors to get the roots.
+		float2 Normalizers;
+		Normalizers.x=w1Factor/((zFree-z[0])*mad(zFree,zFree,-1.0f));
+		Normalizers.y=0.5f/((zFree+1.0f)*(z[0]+1.0f));
+		float4 Polynomial;
+		Polynomial[0]=mad(zFree,Normalizers.y,Normalizers.x);
+		Polynomial[1]=Normalizers.x-Normalizers.y;
+		// Multiply the polynomial by (z-z[0])
+		Polynomial[2]=Polynomial[1];
+		Polynomial[1]=mad(Polynomial[1],-z[0],Polynomial[0]);
+		Polynomial[0]*=-z[0];
+		// Multiply the polynomial by (z-1)
+		Polynomial[3]=Polynomial[2];
+		Polynomial.yz=Polynomial.xy-Polynomial.yz;
+		Polynomial[0]*=-1.0f;
+		// The shadow intensity is the dot product of the coefficients of this 
+		// polynomial and the power moments for the respective powers
+		OutShadowIntensity=dot(Polynomial,float4(1.0f,b.xyz));
+	}
+	// Use the solution with three deltas
+	else{
+		float4 Switch=
+			(z[2]<z[0])?float4(z[1],z[0],1.0f,1.0f):(
+			(z[1]<z[0])?float4(z[0],z[1],0.0f,1.0f):
+			float4(0.0f,0.0f,0.0f,0.0f));
+		float Quotient=(Switch[0]*z[2]-b[0]*(Switch[0]+z[2])+b[1])/((z[2]-Switch[1])*(z[0]-z[1]));
+		OutShadowIntensity=Switch[2]+Switch[3]*Quotient;
+	}
+	OutShadowIntensity=saturate(OutShadowIntensity);
+    return OutShadowIntensity;
+}
+
+float ComputeMSMHamburger(float4 moments, float fragmentDepth, float depthBias, float momentBias)
+{
+    // Bias input data to avoid artifacts
+    float4 b = mix(moments, float4(0.5f, 0.5f, 0.5f, 0.5f), momentBias);
+
+    float3 z;
+    z[0] = fragmentDepth - depthBias;
+
+    // Compute a Cholesky factorization of the Hankel matrix B storing only non-
+    // trivial entries or related products
+    float L32D22 = fma(-b[0], b[1], b[2]);
+    float D22 = fma(-b[0], b[0], b[1]);
+    float squaredDepthVariance = fma(-b[1], b[1], b[3]);
+    
+    float D33D22 = dot(float2(squaredDepthVariance, -L32D22), float2(D22, L32D22));
+    float InvD22 = 1.0f / D22;
+    float L32 = L32D22 * InvD22;
+
+    // Obtain a scaled inverse image of bz = (1,z[0],z[0]*z[0])^T
+    float3 c = float3(1.0f, z[0], z[0] * z[0]);
+
+    // Forward substitution to solve L*c1=bz
+    c[1] -= b.x;
+    c[2] -= b.y + L32 * c[1];
+
+    // Scaling to solve D*c2=c1
+    c[1] *= InvD22;
+    c[2] *= D22 / D33D22;
+
+    // Backward substitution to solve L^T*c3=c2
+    c[1] -= L32 * c[2];
+    c[0] -= dot(c.yz, b.xy);
+
+    // Solve the quadratic equation c[0]+c[1]*z+c[2]*z^2 to obtain solutions
+    // z[1] and z[2]
+    float p = c[1] / c[2];
+    float q = c[0] / c[2];
+    float D = (p * p * 0.25f) - q;
+    float r = sqrt(D);
+    z[1] =- p * 0.5f - r;
+    z[2] =- p * 0.5f + r;
+
+    // Compute the shadow intensity by summing the appropriate weights
+    float4 switchVal = (z[2] < z[0]) ? float4(z[1], z[0], 1.0f, 1.0f) :
+                      ((z[1] < z[0]) ? float4(z[0], z[1], 0.0f, 1.0f) :
+                      float4(0.0f,0.0f,0.0f,0.0f));
+    float quotient = (switchVal[0] * z[2] - b[0] * (switchVal[0] + z[2]) + b[1])/((z[2] - switchVal[1]) * (z[0] - z[1]));
+    float shadowIntensity = switchVal[2] + switchVal[3] * quotient;
+    return 1 - saturate(shadowIntensity);
+}
+
+float3 GetShadowPosOffset(float nDotL, float3 normal, float shadowMapSize)
+{
+    float OffsetScale = 0;
+
+    float texelSize = 2.0f / shadowMapSize;
+    float nmlOffsetScale = saturate(1.0f - nDotL);
+    return texelSize * OffsetScale * nmlOffsetScale * normal;
+}
+
+float SampleShadowMapMSM(Light light, Camera lightCamera, float3 normal, texture2d<float> shadowMap, float3 lightSpacePosition)
+{
+    float3 offset = GetShadowPosOffset(saturate(dot(lightCamera.WorldPosition, normal)), normal, 2048);
+    lightSpacePosition += offset;
+
+    float3 shadowPosition = lightSpacePosition;
+
+    shadowPosition.xy = shadowPosition.xy * float2(0.5, -0.5) + 0.5;
+
+    float depth = shadowPosition.z;// * 0.5 + 0.5;
+
+    float MSMDepthBias = 0.0;
+    // float MSMMomentBias = 0.05;
+    float MSMMomentBias = 0.05;
+    // float LightBleedingReduction = 0.99;
+    // float LightBleedingReduction = 0.85;
+    float LightBleedingReduction = 0.85;
+
+    constexpr sampler depthTextureSampler(mag_filter::linear,
+                                      min_filter::linear,
+                                      mip_filter::linear, max_anisotropy(8));
+
+
+    // constexpr sampler depthTextureSampler(mag_filter::nearest,
+    //                                   min_filter::nearest,
+    //                                   mip_filter::nearest);
+                                      
+    float4 moments = shadowMap.sample(depthTextureSampler, shadowPosition.xy);
+    moments = ConvertOptimizedMoments(moments);
+    // float result = ComputeMSMHamburger(moments, depth, MSMDepthBias, MSMMomentBias * 0.001);
+    //float result = compute_msm_shadow_intensity(moments, depth, MSMMomentBias * 0.001);
+
+    moments = Convert4MomentToCanonical(moments, MSMMomentBias * 0.001);
+    float result = 1 - Compute4MomentShadowIntensity(moments, depth, MSMDepthBias);
+
+    // if (result == 0)
+    // {
+    //     result = 1;
+    // }
+
+    result = ReduceLightBleeding(result, LightBleedingReduction);
+
+    return result;
+}
+
 
 float ComputeLightShadow(Light light, Camera lightCamera, float3 normal, texture2d<float> shadowMap, float3 lightSpacePosition)
 {
@@ -283,7 +500,10 @@ float3 ComputeLightContribution(Light light, Camera lightCamera, MaterialData ma
     
     if (!is_null_texture(shadowMap))
     {
-        lightShadow = ComputeLightShadow(light, lightCamera, materialData.Normal, shadowMap, lightSpacePosition);
+        // lightShadow = ComputeLightShadow(light, lightCamera, materialData.Normal, shadowMap, lightSpacePosition);
+        // return SampleShadowMapMSM(light, lightCamera, materialData.Normal, shadowMap, lightSpacePosition).xyz;
+        lightShadow = SampleShadowMapMSM(light, lightCamera, materialData.Normal, shadowMap, lightSpacePosition);
+        //return lightShadow;
     }
 
     // float3 lightContribution = lightColor * saturate(dot(normalize(light.WorldSpacePosition), materialData.Normal));
@@ -311,11 +531,11 @@ float4 DebugAddCascadeColors(float4 fragmentColor, const device ShaderParameters
 
     float4 cascadeColor = cascadeColors[5];
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
     {
         Camera lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
-        float4 rawPosition = ((lightCamera.ProjectionMatrix * lightCamera.ViewMatrix)) * float4(worldPosition, 1);
-        float3 lightSpacePosition = rawPosition.xyz / rawPosition.w;
+        float4 rawPosition = ((lightCamera.ViewProjectionMatrix)) * float4(worldPosition, 1);
+        float3 lightSpacePosition = rawPosition.xyz;
 
         if (all(lightSpacePosition.xyz < 1.0) && all(lightSpacePosition.xyz > float3(-1,-1,0)))
         {
