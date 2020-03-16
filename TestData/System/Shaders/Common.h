@@ -60,6 +60,8 @@ struct Camera
     float MinDepth;
     float MaxDepth;
     int MomentShadowMapTextureIndex;
+    int OcclusionDepthTextureIndex;
+    int OcclusionDepthCommandListIndex;
 };
 
 struct Light

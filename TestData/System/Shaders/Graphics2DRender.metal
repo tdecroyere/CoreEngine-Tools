@@ -85,6 +85,13 @@ struct PixelOutput
     float4 Color [[color(0)]];
 };
 
+float ConvertDepthSampleToLinear(float depthSample, float nearPlane, float farPlane)
+{
+    float depthRange = farPlane - nearPlane;
+    float worldSpaceDepthSample = 2.0 * nearPlane * farPlane / (farPlane + nearPlane - depthSample * depthRange);
+    return saturate((worldSpaceDepthSample - nearPlane) / depthRange);
+}
+
 fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
                                const device ShaderParameters& shaderParameters)
 {
@@ -111,6 +118,10 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
 
     else
     {
+        // TODO: This hack is only used to display depth buffer values
+        // float depthLinear = ConvertDepthSampleToLinear(textureColor.r, 0.1, 1000);
+        // textureColor = float4(depthLinear, depthLinear, depthLinear, 1);
+
         output.Color = float4(textureColor.rgb, 1);
     }
 

@@ -5,6 +5,63 @@
 
 using namespace metal;
 
+float XSize(BoundingBox boundingBox)
+{
+    return boundingBox.MaxPoint.x - boundingBox.MinPoint.x;
+}
+
+float YSize(BoundingBox boundingBox)
+{
+    return boundingBox.MaxPoint.y - boundingBox.MinPoint.y;
+}
+
+float ZSize(BoundingBox boundingBox)
+{
+    return boundingBox.MaxPoint.z - boundingBox.MinPoint.z;
+}
+
+void AddPointToBoundingBox(thread BoundingBox& boundingBox, float4 point)
+{
+    point.xyz /= point.w;
+
+    float minX = (point.x < boundingBox.MinPoint.x) ? point.x : boundingBox.MinPoint.x;
+    float minY = (point.y < boundingBox.MinPoint.y) ? point.y : boundingBox.MinPoint.y;
+    float minZ = (point.z < boundingBox.MinPoint.z) ? point.z : boundingBox.MinPoint.z;
+
+    float maxX = (point.x > boundingBox.MaxPoint.x) ? point.x : boundingBox.MaxPoint.x;
+    float maxY = (point.y > boundingBox.MaxPoint.y) ? point.y : boundingBox.MaxPoint.y;
+    float maxZ = (point.z > boundingBox.MaxPoint.z) ? point.z : boundingBox.MaxPoint.z;
+
+    boundingBox.MinPoint = float3(minX, minY, minZ);
+    boundingBox.MaxPoint = float3(maxX, maxY, maxZ);
+}
+
+BoundingBox CreateTransformedBoundingBox(BoundingBox boundingBox, float4x4 matrix)
+{
+    float4 pointList[8];
+
+    pointList[0] = matrix * float4((boundingBox.MinPoint + float3(0, 0, 0)), 1);
+    pointList[1] = matrix * float4((boundingBox.MinPoint + float3(XSize(boundingBox), 0, 0)), 1);
+    pointList[2] = matrix * float4((boundingBox.MinPoint + float3(0, YSize(boundingBox), 0)), 1);
+    pointList[3] = matrix * float4((boundingBox.MinPoint + float3(XSize(boundingBox), YSize(boundingBox), 0)), 1);
+    pointList[4] = matrix * float4((boundingBox.MinPoint + float3(0, 0, ZSize(boundingBox))), 1);
+    pointList[5] = matrix * float4((boundingBox.MinPoint + float3(XSize(boundingBox), 0, ZSize(boundingBox))), 1);
+    pointList[6] = matrix * float4((boundingBox.MinPoint + float3(0, YSize(boundingBox), ZSize(boundingBox))), 1);
+    pointList[7] = matrix * float4((boundingBox.MinPoint + float3(XSize(boundingBox), YSize(boundingBox), ZSize(boundingBox))), 1);
+
+    BoundingBox result = {};
+
+    result.MinPoint = float3(MAXFLOAT, MAXFLOAT, MAXFLOAT);
+    result.MaxPoint = float3(-MAXFLOAT, -MAXFLOAT, -MAXFLOAT);
+
+    for (int i = 0; i < 8; i++)
+    {
+        AddPointToBoundingBox(result, pointList[i]);
+    }
+
+    return result;
+}
+
 bool Intersect(float4 plane, BoundingBox box)
 {
     if (dot(plane, float4(box.MinPoint.x, box.MinPoint.y, box.MinPoint.z, 1)) <= 0) return true;
@@ -69,6 +126,7 @@ void EncodeDrawCommand(command_buffer indirectCommandBuffer,
 }
 
 kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_grid]],
+                                     uint2 threadPositionInGroup [[thread_position_in_threadgroup]],
                                      const device ShaderParameters& parameters)
 {
     uint geometryInstanceIndex = threadPosition.x;
@@ -90,6 +148,15 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
         return;
     }
 
+    // threadgroup atomic_uint geometryInstanceCount;
+
+    // if (threadPositionInGroup.x == 0)
+    // {
+    //     atomic_store_explicit(&geometryInstanceCount, 0, metal::memory_order_relaxed);
+    // }
+    
+    // threadgroup_barrier(mem_flags::mem_threadgroup);
+
     BoundingFrustum cameraFrustum = camera.BoundingFrustum;
     BoundingBox worldBoundingBox = geometryInstance.WorldBoundingBox;
 
@@ -101,6 +168,8 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
             
             device atomic_uint* commandBufferCounter = (device atomic_uint*)&parameters.IndirectCommandBufferCounters[camera.OpaqueCommandListIndex];
             atomic_fetch_add_explicit(commandBufferCounter, 1, metal::memory_order_relaxed);
+
+            //atomic_fetch_add_explicit(&geometryInstanceCount, 1, metal::memory_order_relaxed);
 
             EncodeDrawCommand(opaqueCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, false, false);
 
@@ -115,6 +184,21 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
         {
             command_buffer opaqueDepthCommandBuffer = parameters.IndirectCommandBuffers[camera.OpaqueDepthCommandListIndex];
             EncodeDrawCommand(opaqueDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, false, true);
+
+            BoundingBox screenSpaceBoundingBox = CreateTransformedBoundingBox(worldBoundingBox, camera.ViewProjectionMatrix);
+            float minLength = 2.0;
+
+            // if (screenSpaceBoundingBox.MinPoint.z > 0.2)
+            // {
+            //     minLength = 0.5;
+            // }
+
+            // if (XSize(worldBoundingBox) > minLength || YSize(worldBoundingBox) > minLength)
+            if (length(worldBoundingBox.MaxPoint - worldBoundingBox.MinPoint) > minLength)
+            {
+                command_buffer occlusionDepthCommandBuffer = parameters.IndirectCommandBuffers[camera.OcclusionDepthCommandListIndex];
+                EncodeDrawCommand(occlusionDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, false, true);
+            }
         }
 
         else
@@ -123,6 +207,14 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
             EncodeDrawCommand(transparentDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, true, true);
         }
     }
+
+    // threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // if (threadPositionInGroup.x == 0)
+    // {
+    //     device atomic_uint* commandBufferCounter = (device atomic_uint*)&parameters.IndirectCommandBufferCounters[camera.OpaqueCommandListIndex];
+    //     atomic_fetch_add_explicit(commandBufferCounter, atomic_load_explicit(&geometryInstanceCount, memory_order_relaxed), metal::memory_order_relaxed);
+    // }
 
     camera.AlreadyProcessed = true;
 }

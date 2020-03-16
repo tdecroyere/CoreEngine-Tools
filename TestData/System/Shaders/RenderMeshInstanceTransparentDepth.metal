@@ -36,7 +36,7 @@ fragment void PixelMain(VertexOutput input [[stage_in]],
 
     MaterialData materialData = ProcessSimpleMaterial(input.Position.xyz, float3(0), float3(0), true, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
 
-    if ((input.DepthOnly && materialData.Alpha == 0.0) || (!input.DepthOnly && materialData.Alpha < 0.75))
+    if ((input.DepthOnly && materialData.Alpha == 0.0) || (!input.DepthOnly && materialData.Alpha < 1.0))
     {
         discard_fragment();
     }
