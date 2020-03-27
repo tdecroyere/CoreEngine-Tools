@@ -68,7 +68,13 @@ namespace CoreEngineInteropGenerator
                     }
                 }
 
+                stringBuilder.AppendLine("};");
                 stringBuilder.AppendLine();
+
+                stringBuilder.AppendLine($"struct Nullable{structNode.Identifier}");
+                stringBuilder.AppendLine("{");
+                stringBuilder.AppendLine("    int HasValue;");
+                stringBuilder.AppendLine($"    struct {structNode.Identifier} Value;");
                 stringBuilder.AppendLine("};");
                 stringBuilder.AppendLine();
             }

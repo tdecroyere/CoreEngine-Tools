@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Text;
 
 namespace CoreEngineInteropGenerator
 {
@@ -18,27 +19,93 @@ namespace CoreEngineInteropGenerator
                 return string.Empty;
             }
 
+            var nullableTypes = new List<string>();
+
+            var stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine("using System;");
+            stringBuilder.AppendLine("using System.Numerics;");
+            stringBuilder.AppendLine();
+
+            stringBuilder.AppendLine("namespace CoreEngine.HostServices.Interop");
+            stringBuilder.AppendLine("{");
+
             var interfaces = compilationUnit.DescendantNodes().OfType<InterfaceDeclarationSyntax>();
-
-            var generatedCompilationUnit = SyntaxFactory.CompilationUnit();
-            generatedCompilationUnit = generatedCompilationUnit.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")));
-            generatedCompilationUnit = generatedCompilationUnit.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Numerics")));
-
-            var generatedNamespace = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName("CoreEngine.HostServices.Interop"));
             var delegateNameList = new List<string>();
 
             foreach (var interfaceNode in interfaces)
             {
-                var generatedStruct = SyntaxFactory.StructDeclaration(interfaceNode.Identifier.Text.Substring(1))
-                                                   .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-                                                   .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(interfaceNode.Identifier.Text)));
+                // Generate delegate declarations
+                foreach (var member in interfaceNode.Members)
+                {
+                    if (member.Kind() == SyntaxKind.MethodDeclaration)
+                    {
+                        var method = (MethodDeclarationSyntax)member;
+                        var parameters = method.ParameterList.Parameters;
+                        var delegateTypeName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier}Delegate";
 
-                // Generate context field
-                var generatedProperty = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName("IntPtr"), SyntaxFactory.ParseToken("context"))
-                                                     .WithAccessorList(SyntaxFactory.AccessorList(new SyntaxList<AccessorDeclarationSyntax>(SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.ParseToken(";")))))
-                                                     .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword));
+                        var currentIndex = 0;
+                        var delegateTypeNameOriginal = delegateTypeName;
 
-                generatedStruct = generatedStruct.AddMembers(generatedProperty);
+                        while (delegateNameList.Contains(delegateTypeName))
+                        {
+                            delegateTypeName = delegateTypeNameOriginal + $"_{++currentIndex}";
+                        }
+
+                        delegateNameList.Add(delegateTypeName);
+
+                        var delegateVariableName = char.ToLowerInvariant(delegateTypeName[0]) + delegateTypeName.Substring(1);
+                        var returnType = method.ReturnType.ToString();
+
+                        // Generate delegate
+                        IndentCode(stringBuilder, 1);
+                        stringBuilder.Append("internal unsafe delegate ");
+
+                        if (returnType.Last() == '?')
+                        {
+                            nullableTypes.Add(returnType[0..^1]);
+                            returnType = $"Nullable{returnType[0..^1]}";
+                        }
+
+                        stringBuilder.Append(returnType);
+                        stringBuilder.Append($" {delegateTypeName}(IntPtr context");
+
+                        for (var i = 0; i < parameters.Count; i++)
+                        {
+                            var parameter = parameters[i];
+
+                            stringBuilder.Append(", ");
+
+                            if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
+                            {
+                                var index = parameter.Type!.ToString().IndexOf("<");
+                                var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
+                                
+                                stringBuilder.Append($"{parameterType}* {parameter.Identifier}, int {parameter.Identifier}Length");
+                            }
+
+                            else
+                            {
+                                stringBuilder.Append($"{parameter.Type} {parameter.Identifier}");
+                            }
+                        }
+
+                        stringBuilder.AppendLine(");");
+                    }
+                }
+
+                // Generate struct
+                stringBuilder.AppendLine();
+
+                IndentCode(stringBuilder, 1);
+                stringBuilder.AppendLine($"public struct {interfaceNode.Identifier.Text.Substring(1)} : {interfaceNode.Identifier}");
+                
+                IndentCode(stringBuilder, 1);
+                stringBuilder.AppendLine("{");
+
+                IndentCode(stringBuilder, 2);
+                stringBuilder.AppendLine("private IntPtr context { get; }");
+            
+                delegateNameList = new List<string>();
 
                 foreach (var member in interfaceNode.Members)
                 {
@@ -56,142 +123,173 @@ namespace CoreEngineInteropGenerator
                             delegateTypeName = delegateTypeNameOriginal + $"_{++currentIndex}";
                         }
 
-                        delegateNameList.Add(delegateTypeName);
-
                         var delegateVariableName = char.ToLowerInvariant(delegateTypeName[0]) + delegateTypeName.Substring(1);
 
-                        // Generate delegate
-                        var delegateParameters = new List<ParameterSyntax>();
-                        delegateParameters.Insert(0, SyntaxFactory.Parameter(SyntaxFactory.ParseToken("context"))
-                                                                                   .WithType(SyntaxFactory.ParseTypeName("IntPtr")));
-
-                        foreach (var parameter in parameters)
-                        {
-                            if (parameter.Type!.ToString() == "ReadOnlySpan<byte>")
-                            {
-                                var bytePointerParameter = parameter.WithType(SyntaxFactory.ParseTypeName("byte*"));
-                                delegateParameters.Add(bytePointerParameter);
-                                delegateParameters.Add(SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
-                            }
-
-                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
-                            {
-                                var index = parameter.Type!.ToString().IndexOf("<");
-                                var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
-
-                                var bytePointerParameter = parameter.WithType(SyntaxFactory.ParseTypeName($"{parameterType}*"));
-
-                                delegateParameters.Add(bytePointerParameter);
-                                delegateParameters.Add(SyntaxFactory.Parameter(SyntaxFactory.ParseToken($"{parameter.Identifier}Length")).WithType(SyntaxFactory.ParseTypeName("int")));
-                            }
-
-                            else
-                            {
-                                delegateParameters.Add(parameter);
-                            }
-                        }
-
-                        var generatedDelegate = SyntaxFactory.DelegateDeclaration(method.ReturnType, delegateTypeName)
-                                                             .AddModifiers(SyntaxFactory.Token(SyntaxKind.InternalKeyword), SyntaxFactory.Token(SyntaxKind.UnsafeKeyword))
-                                                             .AddParameterListParameters(delegateParameters.ToArray());
-
-                        generatedNamespace = generatedNamespace.AddMembers(generatedDelegate);
-
                         // Generate struct field
-                        generatedProperty = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(delegateTypeName), SyntaxFactory.ParseToken(delegateVariableName))
-                                                         .WithAccessorList(SyntaxFactory.AccessorList(new SyntaxList<AccessorDeclarationSyntax>(SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.ParseToken(";")))))
-                                                         .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword));
+                        stringBuilder.AppendLine();
 
-                        generatedStruct = generatedStruct.AddMembers(generatedProperty);
+                        IndentCode(stringBuilder, 2);
+                        stringBuilder.AppendLine($"private {delegateTypeName} {delegateVariableName} {{ get; }}");
 
                         // Generate struct method
-                        var argumentList = new List<ArgumentSyntax>();
-                        argumentList.Add(SyntaxFactory.Argument(SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.ThisExpression(), SyntaxFactory.IdentifierName("context"))));
+                        IndentCode(stringBuilder, 2);
+                        stringBuilder.Append($"public unsafe {method.ReturnType} {method.Identifier}(");
+
+                        for (var i = 0; i < parameters.Count; i++)
+                        {
+                            var parameter = parameters[i];
+
+                            if (i > 0)
+                            {
+                                stringBuilder.Append(", ");
+                            }
+
+                            stringBuilder.Append($"{parameter.Type} {parameter.Identifier}");
+                        }
+
+                        stringBuilder.AppendLine(")");
+
+                        IndentCode(stringBuilder, 2);
+                        stringBuilder.AppendLine("{");
+
+                        var argumentList = new List<string>()
+                        {
+                            "this.context"
+                        };
                         
                         var currentParameterIndex = 1;
 
                         foreach (var parameter in parameters)
                         {
-                            if (parameter.Type!.ToString() == "ReadOnlySpan<byte>")
+                            if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
                             {
-                                argumentList.Add(SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}Pinned")));
-                                argumentList.Insert(++currentParameterIndex, SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}.Length")));
-                            }
-
-                            else if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
-                            {
-                                argumentList.Add(SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}Pinned")));
-                                argumentList.Insert(++currentParameterIndex, SyntaxFactory.Argument(SyntaxFactory.ParseExpression($"{parameter.Identifier.Text}.Length")));
+                                argumentList.Add($"{parameter.Identifier.Text}Pinned");
+                                argumentList.Insert(++currentParameterIndex, $"{parameter.Identifier.Text}.Length");
                             }
 
                             else
                             {
-                                argumentList.Add(SyntaxFactory.Argument(SyntaxFactory.ParseExpression(parameter.Identifier.Text)));
+                                argumentList.Add(parameter.Identifier.Text);
                             }
 
                             currentParameterIndex++;
                         }
 
-                        var generatedArgumentList = SyntaxFactory.SeparatedList(argumentList);
+                        var generatedArgumentList = string.Join(", ", argumentList.ToArray());
 
-                        var accessExpression = SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.ThisExpression(), SyntaxFactory.IdentifierName(delegateVariableName));
-                        var invocationExpression = SyntaxFactory.InvocationExpression(accessExpression)
-                                                                .WithArgumentList(SyntaxFactory.ArgumentList(generatedArgumentList));
+                        var currentIndentationLevel = 3;
 
-                        var methodBody = SyntaxFactory.ExpressionStatement(invocationExpression) as StatementSyntax;
-
-                        if (method.ReturnType.ToString() != "void")
-                        {
-                            methodBody = SyntaxFactory.ReturnStatement(invocationExpression);
-                        }
+                        IndentCode(stringBuilder, currentIndentationLevel++);
+                        stringBuilder.AppendLine($"if (this.context != null && this.{delegateVariableName} != null)");
 
                         var variablesToPin = parameters.Where(item => item.Type!.ToString().Contains("ReadOnlySpan<"));
 
                         foreach (var variableToPin in variablesToPin)
                         {
-                            var variableType = "byte*";
+                            var index = variableToPin.Type!.ToString().IndexOf("<");
+                            var variableType = variableToPin.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
 
-                            if (variableToPin.Type!.ToString() != "ReadOnlySpan<byte>")
+                            IndentCode(stringBuilder, currentIndentationLevel++);
+                            stringBuilder.AppendLine($"fixed ({variableType}* {variableToPin.Identifier.Text}Pinned = {variableToPin.Identifier.Text})");
+                        }
+
+                        if (method.ReturnType.ToString() != "void")
+                        {
+                            if (nullableTypes.Contains(method.ReturnType.ToString()[0..^1]))
                             {
-                                var index = variableToPin.Type!.ToString().IndexOf("<");
-                                variableType = variableToPin.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty) + "*";
+                                IndentCode(stringBuilder, currentIndentationLevel - 1);
+                                stringBuilder.AppendLine("{");
+
+                                IndentCode(stringBuilder, currentIndentationLevel);
+                                stringBuilder.Append($"var returnedValue = ");
                             }
 
-                            var pinnedVariableDeclaration = SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName(variableType))
-                                                                         .AddVariables(SyntaxFactory.VariableDeclarator($"{variableToPin.Identifier.Text}Pinned")
-                                                                                                    .WithInitializer(SyntaxFactory.EqualsValueClause(SyntaxFactory.ParseExpression(variableToPin.Identifier.Text))));
-                            
-                            methodBody = SyntaxFactory.FixedStatement(pinnedVariableDeclaration, methodBody);
+                            else
+                            {
+                                IndentCode(stringBuilder, currentIndentationLevel);
+                                stringBuilder.Append("return ");
+                            }
                         }
 
-                        ElseClauseSyntax? elseClauseSyntax = SyntaxFactory.ElseClause(SyntaxFactory.ParseStatement($"return default({method.ReturnType});"));
-                        
-                        if (method.ReturnType.ToString() == "void")
+                        else
                         {
-                            elseClauseSyntax = null;
+                            IndentCode(stringBuilder, currentIndentationLevel);
                         }
 
-                        methodBody = SyntaxFactory.IfStatement(SyntaxFactory.ParseExpression($"this.context != null && this.{delegateVariableName} != null"), methodBody, elseClauseSyntax);
+                        stringBuilder.Append($"this.{delegateVariableName}({generatedArgumentList})");
 
-                        var generatedMethod = SyntaxFactory.MethodDeclaration(method.ReturnType, method.Identifier)
-                                                           .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.UnsafeKeyword))
-                                                           .AddParameterListParameters(parameters.ToArray())
-                                                           .WithBody(SyntaxFactory.Block(methodBody));
+                        if (method.ReturnType.ToString() != "void" && nullableTypes.Contains(method.ReturnType.ToString()[0..^1]))
+                        {
+                            stringBuilder.AppendLine(";");
 
-                        generatedStruct = generatedStruct.AddMembers(generatedMethod);
+                            IndentCode(stringBuilder, currentIndentationLevel);
+                            stringBuilder.AppendLine("if (returnedValue.HasValue) return returnedValue.Value;");
+
+                            IndentCode(stringBuilder, currentIndentationLevel - 1);
+                            stringBuilder.AppendLine("}");
+                        }
+
+                        else
+                        {
+                            stringBuilder.AppendLine(";");
+                        }
+
+                        if (method.ReturnType.ToString() != "void")
+                        {
+                            stringBuilder.AppendLine();
+
+                            if (method.ReturnType.ToString() == "string")
+                            {
+                                IndentCode(stringBuilder, 3);
+                                stringBuilder.AppendLine($"return string.Empty;");
+                            }
+
+                            else
+                            {
+                                IndentCode(stringBuilder, 3);
+                                stringBuilder.AppendLine($"return default({method.ReturnType});");
+                            }
+                        }
+
+                        IndentCode(stringBuilder, 2);
+                        stringBuilder.AppendLine("}");
                     }
                 }
-             
-                generatedNamespace = generatedNamespace.AddMembers(generatedStruct);
+
+                IndentCode(stringBuilder, 1);
+                stringBuilder.AppendLine("}");
             }
 
-            generatedCompilationUnit = generatedCompilationUnit.AddMembers(generatedNamespace);
-            
-            var output = generatedCompilationUnit
-                .NormalizeWhitespace()
-                .ToFullString();
+            foreach (var nullableType in nullableTypes)
+            {
+                stringBuilder.AppendLine();
 
-            return output;
+                IndentCode(stringBuilder, 1);
+                stringBuilder.AppendLine($"public struct Nullable{nullableType}");
+                
+                IndentCode(stringBuilder, 1);
+                stringBuilder.AppendLine("{");
+
+                IndentCode(stringBuilder, 2);
+                stringBuilder.AppendLine("public bool HasValue { get; }");
+
+                IndentCode(stringBuilder, 2);
+                stringBuilder.AppendLine($"public {nullableType} Value {{ get; }}");
+
+                IndentCode(stringBuilder, 1);
+                stringBuilder.AppendLine("}");
+            }
+
+            stringBuilder.AppendLine("}");
+            return stringBuilder.ToString();
+        }
+
+        private static void IndentCode(StringBuilder stringBuilder, int level)
+        {
+            for (var i = 0; i < level; i++)
+            {
+                stringBuilder.Append("    ");
+            }
         }
     }
 }

@@ -185,7 +185,7 @@ namespace CoreEngineInteropGenerator
                             {
                                 stringBuilder.Append($"{swiftReturnType}(");
 
-                                if (method.ReturnType.ToString() == "string?")
+                                if (method.ReturnType.ToString() == "string")
                                 {
                                     stringBuilder.Append("strdup(");
                                 }
@@ -222,6 +222,11 @@ namespace CoreEngineInteropGenerator
                                 {
                                     stringBuilder.Append($"({parameter.Identifier} != nil) ? String(cString: ");
                                 } 
+
+                                else if (IsCastingNeededForSwiftType(swiftParameterTypeInterop) && swiftParameterType == "String")
+                                {
+                                    stringBuilder.Append($"String(cString: ");
+                                } 
                                 
                                 else if (IsCastingNeededForSwiftType(swiftParameterTypeInterop))
                                 {
@@ -233,6 +238,11 @@ namespace CoreEngineInteropGenerator
                                 if (IsCastingNeededForSwiftType(swiftParameterTypeInterop) && swiftParameterType == "String?")
                                 {
                                     stringBuilder.Append($"!) : nil");
+                                }
+
+                                else if (IsCastingNeededForSwiftType(swiftParameterTypeInterop) && swiftParameterType == "String")
+                                {
+                                    stringBuilder.Append($"!)");
                                 }
 
                                 else if (IsCastingNeededForSwiftType(swiftParameterTypeInterop) && swiftParameterType == "Bool")
@@ -253,10 +263,10 @@ namespace CoreEngineInteropGenerator
                         {
                             stringBuilder.Append(")");
                             
-                            if (method.ReturnType.ToString() == "string?")
+                            if (method.ReturnType.ToString() == "string")
                             {
                                 // TODO: We have a memory leak here, don't forget to call free
-                                stringBuilder.Append("!)");
+                                stringBuilder.Append(")");
                             }
                             
                             else if (method.ReturnType.ToString() == "bool")
@@ -329,9 +339,19 @@ namespace CoreEngineInteropGenerator
                 return isInteropCode ? "Int32" : "Bool";
             }
 
-            else if (typeName == "string" || typeName == "string?")
+            else if (typeName == "string")
+            {
+                return isInteropCode ? "UnsafeMutablePointer<Int8>?" : "String";
+            }
+
+            else if (typeName == "string?")
             {
                 return isInteropCode ? "UnsafeMutablePointer<Int8>?" : "String?";
+            }
+
+            else if (typeName.Last() == '?')
+            {
+                return $"Nullable{typeName[0..^1]}";
             }
 
             return typeName;
@@ -339,7 +359,7 @@ namespace CoreEngineInteropGenerator
 
         private static bool IsCastingNeededForSwiftType(string typeName)
         {
-            return (typeName == "Int32" || typeName == "UInt32" || typeName == "UnsafeMutablePointer<Int8>?");
+            return typeName == "Int32" || typeName == "UInt32" || typeName == "UnsafeMutablePointer<Int8>?" || typeName == "UnsafeMutablePointer<Int8>?";
         }
     }
 }
