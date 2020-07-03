@@ -89,12 +89,15 @@ namespace CoreEngineInteropGenerator
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
                     {
+                        var hasStringReturn = false;
+
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
                         var functionName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier.ToString()}";
 
                         var functionNameOriginal = functionName;
                         var currentIndex = 0;
+                        var returnType = method.ReturnType.ToString();
 
                         while (functionNameList.Contains(functionName))
                         {
@@ -104,7 +107,18 @@ namespace CoreEngineInteropGenerator
                         functionNameList.Add(functionName);
 
                         stringBuilder.Append("typedef ");
-                        stringBuilder.Append($"{MapCSharpTypeToC(method.ReturnType.ToString())} ");
+
+                        if (returnType == "string")
+                        {
+                            hasStringReturn = true;
+                            stringBuilder.Append($"void ");
+                        }
+                        
+                        else
+                        {
+                            stringBuilder.Append($"{MapCSharpTypeToC(returnType)} ");
+                        }
+
                         stringBuilder.Append($"(*{functionName}Ptr)(void* context");
                         var currentParameterIndex = 1;
 
@@ -134,6 +148,11 @@ namespace CoreEngineInteropGenerator
                             }
 
                             currentParameterIndex++;
+                        }
+
+                        if (hasStringReturn)
+                        {
+                            stringBuilder.Append($", char* output");
                         }
 
                         stringBuilder.Append(");");

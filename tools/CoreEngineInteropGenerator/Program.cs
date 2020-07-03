@@ -18,7 +18,8 @@ namespace CoreEngineInteropGenerator
             var swiftProtocolsOutputPath = "../../../CoreEngine/src/Host/Apple/CoreEngineCommon/HostServices";
             var swiftInteropOutputPath = "../../../CoreEngine/src/Host/Apple/CoreEngineCommon/HostServices/Interop";
             var cHeaderOutputPath = "../../../CoreEngine/src/Host/Common";
-            var cppOutputPath = "../../../CoreEngine/src/Host/Windows/Interop";
+            var cppOutputPath = "../../../CoreEngine/src/Host/Windows/HostServices";
+            var cppInterfacesOutputPath = "../../../CoreEngine/src/Host/Windows/HostServices";
 
 
             if (args.Length > 0)
@@ -28,37 +29,43 @@ namespace CoreEngineInteropGenerator
 
             if (!Directory.Exists(inputPath))
             {
-                Console.WriteLine("ERROR: Input path is not a directory.");
+                Directory.CreateDirectory(inputPath);
                 return;
             }
 
             if (!Directory.Exists(outputPath))
             {
-                Console.WriteLine("ERROR: Output path is not a directory.");
+                Directory.CreateDirectory(outputPath);
                 return;
             }
 
             if (!Directory.Exists(swiftProtocolsOutputPath))
             {
-                Console.WriteLine("ERROR: Swift Protocols Output path is not a directory.");
+                Directory.CreateDirectory(swiftProtocolsOutputPath);
                 return;
             }
 
             if (!Directory.Exists(swiftInteropOutputPath))
             {
-                Console.WriteLine("ERROR: Swift Interop Output path is not a directory.");
+                Directory.CreateDirectory(swiftInteropOutputPath);
                 return;
             }
 
             if (!Directory.Exists(cHeaderOutputPath))
             {
-                Console.WriteLine("ERROR: C Header Output path is not a directory.");
+                Directory.CreateDirectory(cHeaderOutputPath);
                 return;
             }
 
             if (!Directory.Exists(cppOutputPath))
             {
-                Console.WriteLine("ERROR: Cpp Output path is not a directory.");
+                Directory.CreateDirectory(cppOutputPath);
+                return;
+            }
+
+            if (!Directory.Exists(cppInterfacesOutputPath))
+            {
+                Directory.CreateDirectory(cppInterfacesOutputPath);
                 return;
             }
 
@@ -96,7 +103,6 @@ namespace CoreEngineInteropGenerator
                 var swiftInteropImplementationTypes = new Dictionary<string, string>()
                 {
                     { "IGraphicsService", "MetalGraphicsService" },
-                    { "IGraphicsBufferEncoder", "MetalGraphicsBufferEncoder" },
                     { "IInputsService", "InputsManager" }
                 };
 
@@ -114,8 +120,8 @@ namespace CoreEngineInteropGenerator
                 // Generate Cpp Code
                 var cppImplementationTypes = new Dictionary<string, string>()
                 {
-                    { "IGraphicsService", "WindowsDirect3D12Renderer" },
-                    { "IInputsService", "InputsManager" }
+                    { "IGraphicsService", "Direct3D12GraphicsService" },
+                    { "IInputsService", "WindowsInputsService" }
                 };
 
                 output = CppCodeGenerator.GenerateInteropCode(compilationUnit, cppImplementationTypes);

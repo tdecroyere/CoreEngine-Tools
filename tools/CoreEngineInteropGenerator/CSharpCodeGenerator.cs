@@ -23,6 +23,7 @@ namespace CoreEngineInteropGenerator
 
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("using System;");
+            stringBuilder.AppendLine("using System.Buffers;");
             stringBuilder.AppendLine("using System.Numerics;");
             stringBuilder.AppendLine();
 
@@ -39,6 +40,8 @@ namespace CoreEngineInteropGenerator
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
                     {
+                        bool hasStringReturn = false;
+
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
                         var delegateTypeName = $"{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier}Delegate";
@@ -60,7 +63,13 @@ namespace CoreEngineInteropGenerator
                         IndentCode(stringBuilder, 1);
                         stringBuilder.Append("internal unsafe delegate ");
 
-                        if (returnType.Last() == '?')
+                        if (returnType == "string")
+                        {
+                            hasStringReturn = true;
+                            returnType = "void";
+                        }
+
+                        else if (returnType.Last() == '?')
                         {
                             nullableTypes.Add(returnType[0..^1]);
                             returnType = $"Nullable{returnType[0..^1]}";
@@ -87,6 +96,12 @@ namespace CoreEngineInteropGenerator
                             {
                                 stringBuilder.Append($"{parameter.Type} {parameter.Identifier}");
                             }
+                        }
+
+                        if (hasStringReturn)
+                        {
+                            stringBuilder.Append(", ");
+                            stringBuilder.Append($"byte* output");
                         }
 
                         stringBuilder.AppendLine(");");
@@ -179,8 +194,16 @@ namespace CoreEngineInteropGenerator
 
                         var currentIndentationLevel = 3;
 
+                        if (method.ReturnType.ToString() == "string")
+                        {
+                            IndentCode(stringBuilder, currentIndentationLevel);
+                            stringBuilder.AppendLine($"var output = ArrayPool<byte>.Shared.Rent(255);");
+                        }
+
                         IndentCode(stringBuilder, currentIndentationLevel++);
                         stringBuilder.AppendLine($"if (this.context != null && this.{delegateVariableName} != null)");
+                        IndentCode(stringBuilder, currentIndentationLevel - 1);
+                        stringBuilder.AppendLine("{");
 
                         var variablesToPin = parameters.Where(item => item.Type!.ToString().Contains("ReadOnlySpan<"));
 
@@ -193,7 +216,7 @@ namespace CoreEngineInteropGenerator
                             stringBuilder.AppendLine($"fixed ({variableType}* {variableToPin.Identifier.Text}Pinned = {variableToPin.Identifier.Text})");
                         }
 
-                        if (method.ReturnType.ToString() != "void")
+                        if (method.ReturnType.ToString() != "void" && method.ReturnType.ToString() != "string")
                         {
                             if (nullableTypes.Contains(method.ReturnType.ToString()[0..^1]))
                             {
@@ -211,17 +234,24 @@ namespace CoreEngineInteropGenerator
                             }
                         }
 
+                        else if (method.ReturnType.ToString() == "string")
+                        {
+                            IndentCode(stringBuilder, currentIndentationLevel++);
+                            stringBuilder.AppendLine($"fixed (byte* outputPinned = output)");
+
+                            generatedArgumentList += ", outputPinned";
+                        }
+
                         else
                         {
                             IndentCode(stringBuilder, currentIndentationLevel);
                         }
 
-                        stringBuilder.Append($"this.{delegateVariableName}({generatedArgumentList})");
-
+                        stringBuilder.Append($"this.{delegateVariableName}({generatedArgumentList});");
+                        stringBuilder.AppendLine();
+                        
                         if (method.ReturnType.ToString() != "void" && nullableTypes.Contains(method.ReturnType.ToString()[0..^1]))
                         {
-                            stringBuilder.AppendLine(";");
-
                             IndentCode(stringBuilder, currentIndentationLevel);
                             stringBuilder.AppendLine("if (returnedValue.HasValue) return returnedValue.Value;");
 
@@ -229,10 +259,20 @@ namespace CoreEngineInteropGenerator
                             stringBuilder.AppendLine("}");
                         }
 
-                        else
+                        else if (method.ReturnType.ToString() == "string")
                         {
-                            stringBuilder.AppendLine(";");
+                            IndentCode(stringBuilder, currentIndentationLevel);
+                            stringBuilder.AppendLine($"var result = System.Text.Encoding.Unicode.GetString(output).TrimEnd('\0');");
+
+                            IndentCode(stringBuilder, currentIndentationLevel);
+                            stringBuilder.AppendLine($"ArrayPool<byte>.Shared.Return(output);");
+
+                            IndentCode(stringBuilder, currentIndentationLevel);
+                            stringBuilder.AppendLine($"return result;");
                         }
+
+                        IndentCode(stringBuilder, currentIndentationLevel - 1);
+                        stringBuilder.AppendLine("}");
 
                         if (method.ReturnType.ToString() != "void")
                         {
