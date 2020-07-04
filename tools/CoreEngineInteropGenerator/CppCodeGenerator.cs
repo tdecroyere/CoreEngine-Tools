@@ -28,9 +28,7 @@ namespace CoreEngineInteropGenerator
             
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("#pragma once");
-            stringBuilder.AppendLine("#include \"WindowsDirect3D12Renderer.h\"");
-            stringBuilder.AppendLine("#include \"../../Common/CoreEngine.h\"");
-            stringBuilder.AppendLine();
+            
 
             var enums = compilationUnit.DescendantNodes().OfType<EnumDeclarationSyntax>();
             
@@ -49,17 +47,32 @@ namespace CoreEngineInteropGenerator
                 {
                     implementationType = implementationTypes[interfaceNode.Identifier.ToString()];
                 }
+                
+                stringBuilder.AppendLine($"#include \"../{implementationType}.h\"");
+                stringBuilder.AppendLine();
 
                 foreach (var member in interfaceNode.Members)
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
                     {
+                        var hasStringReturn = false;
                         var method = (MethodDeclarationSyntax)member;
                         var parameters = method.ParameterList.Parameters;
                         var functionName = method.Identifier.ToString();
                         var cppReturnType = MapCSharpTypeToC(method.ReturnType.ToString());
 
-                        stringBuilder.Append($"{cppReturnType} {functionName}Interop(void* context");
+                        if (method.ReturnType.ToString() == "string")
+                        {
+                            hasStringReturn = true;
+                            stringBuilder.Append($"void ");
+                        }
+
+                        else
+                        {
+                            stringBuilder.Append($"{cppReturnType} ");
+                        }
+
+                        stringBuilder.Append($"{functionName}Interop(void* context");
                         var currentParameterIndex = 1;
 
                         foreach (var parameter in parameters)
@@ -69,9 +82,12 @@ namespace CoreEngineInteropGenerator
                                 stringBuilder.Append(", ");
                             }
 
-                            if (parameter.Type!.ToString() == "ReadOnlySpan<byte>")
+                            if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
                             {
-                                stringBuilder.Append($"void* {parameter.Identifier}, int {parameter.Identifier}Length");
+                                var index = parameter.Type!.ToString().IndexOf("<");
+                                var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
+
+                                stringBuilder.Append($"{MapCSharpTypeToC(parameterType)}* {parameter.Identifier}, int {parameter.Identifier}Length");
                             }
 
                             else
@@ -82,13 +98,18 @@ namespace CoreEngineInteropGenerator
                             currentParameterIndex++;
                         }
 
+                        if (hasStringReturn)
+                        {
+                            stringBuilder.Append(", char* output");
+                        }
+
                         stringBuilder.AppendLine(")");
                         stringBuilder.AppendLine("{");
                         stringBuilder.AppendLine($"    auto contextObject = ({implementationType}*)context;");
                         stringBuilder.Append("    ");
 
-                        if (method.ReturnType.ToString() != "void") {
-                            
+                        if (method.ReturnType.ToString() != "void" && ! hasStringReturn) 
+                        {
                             stringBuilder.Append("return ");
                         }
 
@@ -103,7 +124,7 @@ namespace CoreEngineInteropGenerator
                                 stringBuilder.Append(", ");
                             }
 
-                            if (parameter.Type!.ToString() == "ReadOnlySpan<byte>")
+                            if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
                             {
                                 stringBuilder.Append($"{parameter.Identifier}, {parameter.Identifier}Length");
                             }
@@ -116,15 +137,25 @@ namespace CoreEngineInteropGenerator
                             currentParameterIndex++;
                         }
 
-                        stringBuilder.AppendLine(")");
+                        if (hasStringReturn)
+                        {
+                            if (currentParameterIndex > 0)
+                            {
+                                stringBuilder.Append(", ");
+                            }
+
+                            stringBuilder.Append("output");
+                        }
+
+                        stringBuilder.AppendLine(");");
                         stringBuilder.AppendLine("}");
                         stringBuilder.AppendLine();
                     }
                 }
 
-                stringBuilder.AppendLine($"void Init{interfaceNode.Identifier.ToString().Substring(1)}({implementationType}* context, {interfaceNode.Identifier.ToString().Substring(1)}* service)");
+                stringBuilder.AppendLine($"void Init{interfaceNode.Identifier.ToString().Substring(1)}(const {implementationType}& context, {interfaceNode.Identifier.ToString().Substring(1)}* service)");
                 stringBuilder.AppendLine("{");
-                stringBuilder.AppendLine("    service->Context = context;");
+                stringBuilder.AppendLine("    service->Context = (void*)&context;");
                 
                 foreach (var member in interfaceNode.Members)
                 {
@@ -134,7 +165,7 @@ namespace CoreEngineInteropGenerator
                         var parameters = method.ParameterList.Parameters;
                         var functionName = method.Identifier.ToString();
 
-                        stringBuilder.AppendLine($"    service->{method.Identifier} = {functionName}Interop;");
+                        stringBuilder.AppendLine($"    service->{interfaceNode.Identifier.ToString().Substring(1)}_{method.Identifier} = {functionName}Interop;");
                     }
                 }
 
@@ -158,6 +189,21 @@ namespace CoreEngineInteropGenerator
                 result = "int";
             }
 
+            else if (typeName == "byte")
+            {
+                result = "void";
+            }
+
+            else if (typeName == "string" || typeName == "string?")
+            {
+                result = "char*";
+            }
+
+            else if (typeName.Last() == '?')
+            {
+                return $"Nullable{typeName[0..^1]}";
+            }
+
             if (enumTypes.Contains(typeName))
             {
                 result = "enum " + result;
@@ -175,7 +221,7 @@ namespace CoreEngineInteropGenerator
         {
             var builtInTypes = new string[] 
             {
-                "void", "bool", "byte", "short", "ushort", "int", "uint", "float", "double", "char"
+                "void", "bool", "byte", "short", "ushort", "int", "uint", "float", "double", "char", "string", "string?"
             };
 
             return builtInTypes.Contains(typeName);

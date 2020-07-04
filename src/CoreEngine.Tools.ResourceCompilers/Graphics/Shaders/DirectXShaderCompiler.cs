@@ -58,7 +58,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             else
             {
                 buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}fxc.exe";
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T vs_5_1 /E VertexMain /Fo {vsOutputShaderFile}";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /Zi /T vs_5_1 /E VertexMain /Fo {vsOutputShaderFile}";
             }
 
             buildProcess.Start();
@@ -78,7 +78,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             else
             {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T ps_5_1 /E PixelMain /Fo {psOutputShaderFile}";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /Zi /T ps_5_1 /E PixelMain /Fo {psOutputShaderFile}";
             }
 
             buildProcess.Start();
