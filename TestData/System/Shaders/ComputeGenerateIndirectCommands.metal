@@ -96,7 +96,7 @@ void EncodeDrawCommand(command_buffer indirectCommandBuffer,
                        const device uint* indexBuffer, 
                        const device Camera& camera, 
                        const device GeometryInstance& geometryInstance,
-                       const device Light& testLight,
+                       const device Light* lights,
                        bool isTransparent,
                        bool depthOnly)
 {
@@ -119,7 +119,7 @@ void EncodeDrawCommand(command_buffer indirectCommandBuffer,
 
         commandList.set_fragment_buffer(&parameters, 2);
         commandList.set_fragment_buffer(&geometryInstance, 3);
-        commandList.set_fragment_buffer(&testLight, 4);
+        commandList.set_fragment_buffer(lights, 4);
     }
 
     commandList.draw_indexed_primitives(primitive_type::triangle, geometryInstance.IndexCount, indexBuffer, 1, 0, geometryInstanceIndex);
@@ -138,8 +138,6 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
 
     const device VertexInput* vertexBuffer = (const device VertexInput*)parameters.Buffers[geometryPacket.VertexBufferIndex];
     const device uint* indexBuffer = (const device uint*)parameters.Buffers[geometryPacket.IndexBufferIndex] + geometryInstance.StartIndex;
-
-    const device Light& testLight = parameters.Lights[0];
 
     device Camera& camera = parameters.Cameras[cameraIndex];
 
@@ -171,19 +169,19 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
 
             //atomic_fetch_add_explicit(&geometryInstanceCount, 1, metal::memory_order_relaxed);
 
-            EncodeDrawCommand(opaqueCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, false, false);
+            EncodeDrawCommand(opaqueCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, parameters.Lights, false, false);
 
             if (material.IsTransparent)
             {
                 command_buffer transparentCommandBuffer = parameters.IndirectCommandBuffers[camera.TransparentCommandListIndex];
-                EncodeDrawCommand(transparentCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, true, false);
+                EncodeDrawCommand(transparentCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, parameters.Lights, true, false);
             }
         }
 
         if (material.IsTransparent == false)
         {
             command_buffer opaqueDepthCommandBuffer = parameters.IndirectCommandBuffers[camera.OpaqueDepthCommandListIndex];
-            EncodeDrawCommand(opaqueDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, false, true);
+            EncodeDrawCommand(opaqueDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, parameters.Lights, false, true);
 
             BoundingBox screenSpaceBoundingBox = CreateTransformedBoundingBox(worldBoundingBox, camera.ViewProjectionMatrix);
             float minLength = 2.0;
@@ -197,14 +195,14 @@ kernel void GenerateIndirectCommands(uint2 threadPosition [[thread_position_in_g
             if (length(worldBoundingBox.MaxPoint - worldBoundingBox.MinPoint) > minLength)
             {
                 command_buffer occlusionDepthCommandBuffer = parameters.IndirectCommandBuffers[camera.OcclusionDepthCommandListIndex];
-                EncodeDrawCommand(occlusionDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, false, true);
+                EncodeDrawCommand(occlusionDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, parameters.Lights, false, true);
             }
         }
 
         else
         {
             command_buffer transparentDepthCommandBuffer = parameters.IndirectCommandBuffers[camera.TransparentDepthCommandListIndex];
-            EncodeDrawCommand(transparentDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, testLight, true, true);
+            EncodeDrawCommand(transparentDepthCommandBuffer, geometryInstanceIndex, parameters, vertexBuffer, indexBuffer, camera, geometryInstance, parameters.Lights, true, true);
         }
     }
 

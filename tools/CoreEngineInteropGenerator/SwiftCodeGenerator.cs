@@ -68,9 +68,19 @@ namespace CoreEngineInteropGenerator
                             currentParameterIndex++;
                         }
 
+                        if (method.ReturnType.ToString() == "string" || method.ReturnType.ToString() == "string?")
+                        {
+                            if (currentParameterIndex > 0)
+                            {
+                                stringBuilder.Append(", ");
+                            }
+
+                            stringBuilder.Append($"_ output: UnsafeMutablePointer<Int8>?");
+                        }
+
                         stringBuilder.Append(")");
                        
-                        if (method.ReturnType.ToString() != "void")
+                        if (method.ReturnType.ToString() != "void" && method.ReturnType.ToString() != "string" && method.ReturnType.ToString() != "string?")
                         {
                             stringBuilder.Append($" -> {MapCSharpTypeToSwift(method.ReturnType.ToString())}");
                         }
@@ -166,9 +176,14 @@ namespace CoreEngineInteropGenerator
                             currentParameterIndex++;
                         }
 
+                        if (method.ReturnType.ToString() == "string" || method.ReturnType.ToString() == "string?")
+                        {
+                            stringBuilder.Append($", _ output: UnsafeMutablePointer<Int8>?");
+                        }
+
                         stringBuilder.Append(")");
                        
-                        if (method.ReturnType.ToString() != "void")
+                        if (method.ReturnType.ToString() != "void" && method.ReturnType.ToString() != "string" && method.ReturnType.ToString() != "string?")
                         {
                             stringBuilder.Append($" -> {swiftReturnType}");
                         }
@@ -177,7 +192,7 @@ namespace CoreEngineInteropGenerator
                         stringBuilder.AppendLine($"    let contextObject = Unmanaged<{implementationType}>.fromOpaque(context!).takeUnretainedValue()");
                         stringBuilder.Append("    ");
 
-                        if (method.ReturnType.ToString() != "void") 
+                        if (method.ReturnType.ToString() != "void" && method.ReturnType.ToString() != "string" && method.ReturnType.ToString() != "string?") 
                         {
                             stringBuilder.Append("return ");
 
@@ -259,7 +274,17 @@ namespace CoreEngineInteropGenerator
                             currentParameterIndex++;
                         }
 
-                        if (method.ReturnType.ToString() != "void" && IsCastingNeededForSwiftType(swiftReturnType))
+                        if (method.ReturnType.ToString() == "string" || method.ReturnType.ToString() == "string?")
+                        {
+                            if (currentParameterIndex > 0)
+                            {
+                                stringBuilder.Append(", ");
+                            }
+
+                            stringBuilder.Append($"&output");
+                        }
+
+                        if (method.ReturnType.ToString() != "void" && method.ReturnType.ToString() != "string" && method.ReturnType.ToString() != "string?" && IsCastingNeededForSwiftType(swiftReturnType))
                         {
                             stringBuilder.Append(")");
                             

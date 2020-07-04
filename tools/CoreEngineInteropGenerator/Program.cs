@@ -71,10 +71,8 @@ namespace CoreEngineInteropGenerator
 
                 var code = await File.ReadAllTextAsync(inputFile);
                 var tree = CSharpSyntaxTree.ParseText(code);
-                
-                var compilationUnit = await tree.GetRootAsync() as CompilationUnitSyntax;
 
-                if (compilationUnit == null)
+                if (!(await tree.GetRootAsync() is CompilationUnitSyntax compilationUnit))
                 {
                     Console.WriteLine("ERROR: Root node of C# file is not a CompilationUnit.");
                     return;

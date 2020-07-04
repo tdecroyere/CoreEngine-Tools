@@ -67,7 +67,9 @@ struct Camera
 struct Light
 {
     packed_float3 WorldSpacePosition;
+    packed_float3 Color;
     int CameraIndexes[4];
+    int LightType;
 };
 
 struct Material
@@ -81,6 +83,7 @@ struct SceneProperties
 {
     int ActiveCameraIndex;
     int DebugCameraIndex;
+    int LightCount;
     bool isDebugCameraActive;
 };
 
@@ -179,7 +182,7 @@ float Compute4MomentShadowIntensity(float4 Biased4Moments, float FragmentDepth,f
 	// Backward substitution to solve L^T*c3=c2
 	c[1]-=L21*c[2];
 	c[0]-=dot(c.yz,b.xy);
-	// Solve the quadratic equation c[0]+c[1]*z+c[2]*z^2 to obtain solutions z[1] 
+	// Solve the quadratic equation c[0]+c[1]*z+c[2]*z^2 to obtain solutions z[1]
 	// and z[2]
 	float InvC2=1.0f/c[2];
 	float p=c[1]*InvC2;
@@ -189,14 +192,14 @@ float Compute4MomentShadowIntensity(float4 Biased4Moments, float FragmentDepth,f
 	z[1]=-(p/2.0f)-r;
 	z[2]=-(p/2.0f)+r;
 
-	// Use a solution made of four deltas if the solution with three deltas is 
+	// Use a solution made of four deltas if the solution with three deltas is
 	// invalid
-	
+
     if(z[1]<-1.0f || z[2]>1.0f){
 		float zFree=((b[0]-b[2])*z[0]+b[3]-b[1])/(z[0]+b[2]-b[0]-b[1]*z[0]);
 		float w1Factor=(z[0]>zFree)?1.0f:0.0f;
-		// Construct a polynomial taking value zero at z[0] and 1, value 1 at -1 and 
-		// value w1Factor at zFree. Start with a linear part and then multiply by 
+		// Construct a polynomial taking value zero at z[0] and 1, value 1 at -1 and
+		// value w1Factor at zFree. Start with a linear part and then multiply by
 		// linear factors to get the roots.
 		float2 Normalizers;
 		Normalizers.x=w1Factor/((zFree-z[0])*mad(zFree,zFree,-1.0f));
@@ -212,7 +215,7 @@ float Compute4MomentShadowIntensity(float4 Biased4Moments, float FragmentDepth,f
 		Polynomial[3]=Polynomial[2];
 		Polynomial.yz=Polynomial.xy-Polynomial.yz;
 		Polynomial[0]*=-1.0f;
-		// The shadow intensity is the dot product of the coefficients of this 
+		// The shadow intensity is the dot product of the coefficients of this
 		// polynomial and the power moments for the respective powers
 		OutShadowIntensity=dot(Polynomial,float4(1.0f,b.xyz));
 	}
@@ -242,7 +245,7 @@ float ComputeMSMHamburger(float4 moments, float fragmentDepth, float depthBias, 
     float L32D22 = fma(-b[0], b[1], b[2]);
     float D22 = fma(-b[0], b[0], b[1]);
     float squaredDepthVariance = fma(-b[1], b[1], b[3]);
-    
+
     float D33D22 = dot(float2(squaredDepthVariance, -L32D22), float2(D22, L32D22));
     float InvD22 = 1.0f / D22;
     float L32 = L32D22 * InvD22;
@@ -315,7 +318,7 @@ float SampleShadowMapMSM(Light light, Camera lightCamera, float3 normal, texture
     // constexpr sampler depthTextureSampler(mag_filter::nearest,
     //                                   min_filter::nearest,
     //                                   mip_filter::nearest);
-                                      
+
     float4 moments = shadowMap.sample(depthTextureSampler, shadowPosition.xy);
     moments = ConvertOptimizedMoments(moments);
     // float result = ComputeMSMHamburger(moments, depth, MSMDepthBias, MSMMomentBias * 0.001);
@@ -339,25 +342,25 @@ float ComputeLightShadow(Light light, Camera lightCamera, float3 normal, texture
 {
     // constexpr sampler depthTextureSampler(mag_filter::linear,
     //                                   min_filter::linear,
-    //                                   mip_filter::linear, 
+    //                                   mip_filter::linear,
     //                                   address::clamp_to_border,
     //                                   border_color::opaque_white, max_anisotropy(8));
 
     constexpr sampler depthTextureSampler(mag_filter::nearest,
                                       min_filter::nearest,
-                                      mip_filter::nearest, 
+                                      mip_filter::nearest,
                                       address::clamp_to_border,
                                       border_color::opaque_white);
-                                      
+
     float2 shadowUv = lightSpacePosition.xy * float2(0.5, -0.5) + 0.5;
     float shadowMapDepth = shadowMap.sample(depthTextureSampler, shadowUv).r;
 
     float minBias = 0.11;
     float maxBias = 0.501;
 
-    //float bias = max(maxBias * (1.0 - dot(normal, normalize(lightCamera.WorldPosition))), 0.235);  
-    float bias = max(maxBias * (1.0 - shadowMapDepth), minBias);  
-    
+    //float bias = max(maxBias * (1.0 - dot(normal, normalize(lightCamera.WorldPosition))), 0.235);
+    float bias = max(maxBias * (1.0 - shadowMapDepth), minBias);
+
     float lightSpaceDepth = lightSpacePosition.z - bias;
     //float lightSpaceDepth = lightSpacePosition.z - 0.06;
 
@@ -379,7 +382,7 @@ float NormalDistributionGGX(float NdotH, float roughness)
 // Testing Geometric Shadowing Functions
 //--------------------------------------------------------
 
-float VisibilityFunctionSmithGGX(float NdotV, float NdotL, float roughness) 
+float VisibilityFunctionSmithGGX(float NdotV, float NdotL, float roughness)
 {
     float a2 = roughness * roughness;
     float GGXV = NdotL * sqrt(NdotV * NdotV * (1.0 - a2) + a2);
@@ -391,7 +394,7 @@ float VisibilityFunctionSmithGGX(float NdotV, float NdotL, float roughness)
 // Testing Fresnel Functions
 //--------------------------------------------------------
 
-float3 FresnelFunctionSchlick(float VdotH, float3 f0) 
+float3 FresnelFunctionSchlick(float VdotH, float3 f0)
 {
     float f = pow(1.0 - VdotH, 5.0);
     return f + f0 * (1.0 - f);
@@ -402,7 +405,7 @@ float F_Schlick(float VoH, float f0, float f90) {
     return f0 + (f90 - f0) * pow(1.0 - VoH, 5.0);
 }
 
-float DiffuseReflectanceDisney(float NoV, float NoL, float LoH, float roughness) 
+float DiffuseReflectanceDisney(float NoV, float NoL, float LoH, float roughness)
 {
     float f90 = 0.5 + 2.0 * roughness * LoH * LoH;
     float lightScatter = F_Schlick(NoL, 1.0, f90);
@@ -410,7 +413,7 @@ float DiffuseReflectanceDisney(float NoV, float NoL, float LoH, float roughness)
     return lightScatter * viewScatter * M_1_PI_F;
 }
 
-float DiffuseReflectanceLambert() 
+float DiffuseReflectanceLambert()
 {
     return M_1_PI_F;
 }
@@ -425,7 +428,7 @@ float3 EvaluateBrdf(MaterialData materialData, float3 viewDirection, float3 ligh
     float invMetallic = 1.0 - materialData.Metallic;
     //materialData.Roughness = materialData.Roughness * materialData.Roughness;
 
-    float3 halfDirection = normalize(viewDirection + lightDirection); 
+    float3 halfDirection = normalize(viewDirection + lightDirection);
 
     float NdotV =  abs(dot(materialData.Normal, viewDirection)) + 1e-5;
     float NdotH =  clamp(dot(materialData.Normal, halfDirection), 0.0 , 1.0);
@@ -458,7 +461,7 @@ float3 ComputeIBL(float3 viewDirection, MaterialData materialData, texturecube<f
     constexpr sampler env_texture_sampler(mag_filter::linear,
                                         min_filter::linear,
                                         mip_filter::linear, address::repeat, max_anisotropy(8));
-    
+
     float diffuseScale = 2.5;
     float specularScale = 3;
     float reflectance = 0.5;
@@ -482,10 +485,11 @@ float3 ComputeIBL(float3 viewDirection, MaterialData materialData, texturecube<f
     float4 cubeMapSample = environmentMap.sample(env_texture_sampler, reflectionVector);
     float3 specularIBL = cubeMapSample.rgb * specularColor;
 
-    return diffuseIBL * diffuseScale + specularIBL * specularScale;
+    // return diffuseIBL * diffuseScale + specularIBL * specularScale;
+    return specularIBL * specularScale;
 }
 
-float3 ComputeLightContribution(Light light, Camera lightCamera, MaterialData materialData, texture2d<float> shadowMap, texturecube<float> environmentMap, texturecube<float> irradianceEnvironmentMap, float3 lightSpacePosition, float3 viewDirection)
+float3 ComputeLightContribution(Light light, Camera lightCamera, MaterialData materialData, texture2d<float> shadowMap, texturecube<float> environmentMap, texturecube<float> irradianceEnvironmentMap, float3 lightSpacePosition, float3 viewDirection, float3 worldPosition)
 {
     constexpr sampler env_texture_sampler(mag_filter::linear,
                                       min_filter::linear,
@@ -493,13 +497,29 @@ float3 ComputeLightContribution(Light light, Camera lightCamera, MaterialData ma
 
     //float3 lightColor = float3(1, 1, 1);
     // float3 lightColor = float3(10, 10, 10);
-    float3 lightColor = float3(95, 91, 84);
+    float3 lightColor = light.Color * 100.0;//float3(95, 91, 84);
     // float3 lightColor = float3(1000, 1000, 1000);
     float3 ambientColor = float3(0.1, 0.1, 0.1);
     float lightShadow = 1.0;
     float3 lightDirection = normalize(light.WorldSpacePosition);
+    float attenuation = 1.0;
+
+    if (light.LightType == 0)
+    {
+        float3 lightVector = light.WorldSpacePosition - worldPosition;
+        float distance = length(lightVector);
+
+        float radius = 2;
+
+        // attenuation = clamp(0.002 / distance, 0.0, 1.0);
+        attenuation = clamp(1.0 - distance / radius, 0.0, 1.0);
+        
+        lightDirection = normalize(lightVector);
+        lightColor *= 5;
+    }
+
     //float3 lightColor = environmentMap.sample(env_texture_sampler, lightDirection).rgb * 100;
-    
+
     if (!is_null_texture(shadowMap))
     {
         // lightShadow = ComputeLightShadow(light, lightCamera, materialData.Normal, shadowMap, lightSpacePosition);
@@ -516,12 +536,13 @@ float3 ComputeLightContribution(Light light, Camera lightCamera, MaterialData ma
 
     float3 iblColor = ComputeIBL(viewDirection, materialData, environmentMap, irradianceEnvironmentMap);
 
-    return lightColor * lightShadow * reflectance * NdotL + iblColor;
+    return lightColor * attenuation * lightShadow * reflectance * NdotL;// + materialData.Albedo * ambientColor;
+    // return lightColor * lightShadow * reflectance * NdotL + iblColor;
 }
 
 float4 DebugAddCascadeColors(float4 fragmentColor, const device ShaderParameters& shaderParameters, Light light, float3 worldPosition)
 {
-    float4 cascadeColors[6] = 
+    float4 cascadeColors[6] =
     {
         float4(1, 0, 0, 1),
         float4(0, 1, 0, 1),
@@ -548,6 +569,44 @@ float4 DebugAddCascadeColors(float4 fragmentColor, const device ShaderParameters
 
     float alpha = 0.75;
     return cascadeColor * alpha + fragmentColor * (1 - alpha);
+}
+
+float4 DebugAddCounterColors(float4 fragmentColor, int counter)
+{
+    if (counter == 0)
+    {
+        return fragmentColor;
+    }
+
+    // TODO: Pass thresolds as parameters
+
+    float4 colors[4] =
+    {
+        float4(0, 0, 1, 1),
+        float4(0, 1, 0, 1),
+        float4(1, 0.2, 0, 1),
+        float4(1, 0, 0, 1)
+    };
+
+    float4 outputColor = colors[3];
+
+    if (counter < 2)
+    {
+        outputColor = colors[0];
+    }
+
+    else if (counter < 4)
+    {
+        outputColor = colors[1];
+    }
+
+    else if (counter < 10)
+    {
+        outputColor = colors[2];
+    }
+
+    float alpha = 0.75;
+    return outputColor * alpha + fragmentColor * (1 - alpha);
 }
 
 #include "Materials/SimpleMaterial.h"

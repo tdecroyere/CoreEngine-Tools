@@ -42,33 +42,47 @@ fragment PixelOutput PixelMain(VertexOutput input [[stage_in]],
                                const device void* materialBufferData [[buffer(1)]],
                                const device ShaderParameters& shaderParameters [[buffer(2)]],
                                const device GeometryInstance& geometryInstance [[buffer(3)]],
-                               const device Light& light [[buffer(4)]])
+                               const device Light* lights [[buffer(4)]])
 {
     PixelOutput output = {};
 
     MaterialData materialData = ProcessSimpleMaterial(input.WorldPosition, input.WorldNormal, input.ViewDirection, false, input.TextureCoordinates, materialBufferData, material.MaterialTextureOffset, shaderParameters);
 
-    float3 lightSpacePosition;
-    texture2d<float> lightShadowBuffer;
-    Camera lightCamera;
+    int lightCount = shaderParameters.SceneProperties.LightCount;
+    float3 outputColor = float3(0, 0, 0);
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < lightCount; i++)
     {
-        lightCamera = shaderParameters.Cameras[light.CameraIndexes[i]];
-        lightSpacePosition = (lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1)).xyz;
+        const device Light& light = lights[i];
 
-        if (all(lightSpacePosition.xyz < 1.0) && all(lightSpacePosition.xyz > float3(-1,-1,0)))
+        float3 lightSpacePosition;
+        texture2d<float> lightShadowBuffer;
+        Camera lightCamera;
+
+        if (light.LightType == 1)
         {
-            lightShadowBuffer = shaderParameters.Textures[lightCamera.MomentShadowMapTextureIndex];
-            break;
+            for (int j = 0; j < 4; j++)
+            {
+                lightCamera = shaderParameters.Cameras[light.CameraIndexes[j]];
+                lightSpacePosition = (lightCamera.ViewProjectionMatrix * float4(input.WorldPosition, 1)).xyz;
+
+                if (all(lightSpacePosition.xyz < 1.0) && all(lightSpacePosition.xyz > float3(-1,-1,0)))
+                {
+                    lightShadowBuffer = shaderParameters.Textures[lightCamera.MomentShadowMapTextureIndex];
+                    break;
+                }
+            }
         }
+
+        outputColor += ComputeLightContribution(light, lightCamera, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection), input.WorldPosition);
     }
 
-    float3 outputColor = ComputeLightContribution(light, lightCamera, materialData, lightShadowBuffer, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1], lightSpacePosition, normalize(input.ViewDirection));
-
-    output.OpaqueColor = float4(outputColor, 1);
+    float3 iblColor = ComputeIBL(normalize(input.ViewDirection), materialData, shaderParameters.CubeTextures[0], shaderParameters.CubeTextures[1]);
+    float3 ambientColor = float3(0.1, 0.1, 0.1);
+    output.OpaqueColor = float4(outputColor + materialData.Albedo * ambientColor, 1);
 
     // TODO: Move all debug overlay to a debug shader
+    //output.OpaqueColor = DebugAddCounterColors(output.OpaqueColor, lightCount);
     //output.OpaqueColor = DebugAddCascadeColors(output.OpaqueColor, shaderParameters, light, input.WorldPosition);
 
     //output.OpaqueColor = float4(materialData.Occlusion,materialData.Occlusion,materialData.Occlusion, 1);

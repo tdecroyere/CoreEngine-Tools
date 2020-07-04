@@ -1,9 +1,9 @@
 Material:
-  IsTransparent: true
+  IsTransparent: false
   Properties:
-    - DiffuseColor: [1, 0.1, 0.1, 0.5]
+    - DiffuseColor: [0.71, 0.72, 0.72, 1.0]
     - DiffuseTexture: ''
     - NormalTexture: ''
     - BumpTexture: ''
-    - SpecularColor: [1, 0.5, 0, 0]
+    - SpecularColor: [1, 0.75, 1, 0]
     - SpecularTexture: ''

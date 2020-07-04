@@ -64,6 +64,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                 material.Properties.Add(new MaterialProperty("DiffuseTexture", diffuseTexture));
                 material.Properties.Add(new MaterialProperty("NormalTexture", normalTexture));
                 material.Properties.Add(new MaterialProperty("BumpTexture", string.Empty));
+                material.Properties.Add(new MaterialProperty("SpecularColor", new float[4] {0, 0, 0, 0}));
                 material.Properties.Add(new MaterialProperty("SpecularTexture", specularTexture));
 
                 materials.Add(material);

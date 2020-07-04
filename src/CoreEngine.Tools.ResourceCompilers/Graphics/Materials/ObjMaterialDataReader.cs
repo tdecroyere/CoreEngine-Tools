@@ -30,6 +30,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
             var currentDiffuseTexture = string.Empty;
             var currentNormalTexture = string.Empty;
             var currentBumpTexture = string.Empty;
+            var currentSpecularTexture = string.Empty;
             
             using var reader = new StreamReader(new MemoryStream(sourceData.ToArray()));
             
@@ -50,6 +51,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                             currentMaterial.Properties.Add(new MaterialProperty("DiffuseTexture", currentDiffuseTexture));
                             currentMaterial.Properties.Add(new MaterialProperty("NormalTexture", currentNormalTexture));
                             currentMaterial.Properties.Add(new MaterialProperty("BumpTexture", currentBumpTexture));
+                            currentMaterial.Properties.Add(new MaterialProperty("SpecularColor", new float[4] { 0, 0, 0, 0}));
+                            currentMaterial.Properties.Add(new MaterialProperty("SpecularTexture", currentSpecularTexture));
 
                             materials.Add(currentMaterial);
 
@@ -57,6 +60,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                             currentDiffuseTexture = string.Empty;
                             currentNormalTexture = string.Empty;
                             currentBumpTexture = string.Empty;
+                            currentSpecularTexture = string.Empty;
                         }
 
                         var materialName = lineParts[1];
@@ -105,6 +109,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Materials
                 currentMaterial.Properties.Add(new MaterialProperty("DiffuseTexture", currentDiffuseTexture));
                 currentMaterial.Properties.Add(new MaterialProperty("NormalTexture", currentNormalTexture));
                 currentMaterial.Properties.Add(new MaterialProperty("BumpTexture", currentBumpTexture));
+                currentMaterial.Properties.Add(new MaterialProperty("SpecularColor", new float[4] { 0, 0, 0, 0}));
+                currentMaterial.Properties.Add(new MaterialProperty("SpecularTexture", currentSpecularTexture));
 
                 materials.Add(currentMaterial);
             }

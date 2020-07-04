@@ -11,10 +11,11 @@ constexpr sampler texture_sampler(mag_filter::linear,
 
 struct SimpleMaterial
 {
-    float4 DiffuseColor;
+    packed_float4 DiffuseColor;
     int DiffuseTexture;
     int NormalTexture;
     int BumpTexture;
+    packed_float4 SpecularColor;
     int SpecularTexture;
 };
 
@@ -97,23 +98,23 @@ MaterialData ProcessSimpleMaterial(float3 position, float3 worldNormal, float3 v
 
     if (!depthOnly && simpleMaterial.NormalTexture > 0 && !(worldNormal.x == 0 && worldNormal.y == 0 && worldNormal.z == 0))
     {
-        if (simpleMaterial.BumpTexture > 0)
-        {
-            float3  N            = normalize(worldNormal);
-            float3  dp1          = dfdx( -viewDirection.xyz );
-            float3  dp2          = dfdy( -viewDirection.xyz );
-            float2  duv1         = dfdx( textureCoordinates );
-            float2  duv2         = dfdy( textureCoordinates );
+        // if (simpleMaterial.BumpTexture > 0)
+        // {
+        //     float3  N            = normalize(worldNormal);
+        //     float3  dp1          = dfdx( -viewDirection.xyz );
+        //     float3  dp2          = dfdy( -viewDirection.xyz );
+        //     float2  duv1         = dfdx( textureCoordinates );
+        //     float2  duv2         = dfdy( textureCoordinates );
 
-            float3 T = normalize(dp1 * duv2.y - dp2 * duv1.y);
-            float3 B = -normalize(cross(N, T));
+        //     float3 T = normalize(dp1 * duv2.y - dp2 * duv1.y);
+        //     float3 B = -normalize(cross(N, T));
 
-            float3x3 tbnMat = float3x3(T, B, N);
+        //     float3x3 tbnMat = float3x3(T, B, N);
 
-            float3 texDir3D = normalize( transpose(tbnMat) * -viewDirection );
+        //     float3 texDir3D = normalize( transpose(tbnMat) * -viewDirection );
 
-            textureCoordinates = NoParallax(bumpTexture, texture_sampler, texDir3D, textureCoordinates);
-        }
+        //     textureCoordinates = NoParallax(bumpTexture, texture_sampler, texDir3D, textureCoordinates);
+        // }
 
         float2 textureColor = normalTexture.sample(texture_sampler, textureCoordinates).rg * 2.0 - 1.0;
         float3 nrmBaseNormal = normalize(worldNormal);
@@ -155,6 +156,20 @@ MaterialData ProcessSimpleMaterial(float3 position, float3 worldNormal, float3 v
         materialData.Roughness = specularColor.g;
         materialData.Metallic = specularColor.b;
     }
+
+    else if (simpleMaterial.SpecularColor.r == 1)
+    {
+        materialData.Roughness = simpleMaterial.SpecularColor.g;
+        materialData.Metallic = simpleMaterial.SpecularColor.b;
+    }
+
+    else
+    {
+        materialData.Occlusion = 0;
+        materialData.Roughness = 0.5;
+        materialData.Metallic = 0;
+    }
+    
 
     return materialData;
 }
