@@ -8,7 +8,7 @@
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
-            "args": ["../../TestData/TestProject.ceproj", "TestRedMaterial.cematerial"],
+            "args": ["../../TestData/TestProject.ceproj", "System/Shaders/Graphics2DRender.hlsl"],
             "console": "internalConsole",
             "stopAtEntry": false,
             "osx": {

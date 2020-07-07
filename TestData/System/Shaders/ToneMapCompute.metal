@@ -28,5 +28,7 @@ kernel void ToneMap(uint2 pixelCoordinates [[thread_position_in_grid]],
     float3 sample = shaderParameters.InputTexture.read(pixelCoordinates).rgb;
 
     sample = ToneMapACES(sample * exposure);
+
+    // TODO: Do we need to convert from linear space to SRGB?
     shaderParameters.OutputTexture.write(float4(sample, 1.0), pixelCoordinates);
 }
