@@ -281,7 +281,7 @@ namespace CoreEngineInteropGenerator
                                 stringBuilder.Append(", ");
                             }
 
-                            stringBuilder.Append($"&output");
+                            stringBuilder.Append($"output");
                         }
 
                         if (method.ReturnType.ToString() != "void" && method.ReturnType.ToString() != "string" && method.ReturnType.ToString() != "string?" && IsCastingNeededForSwiftType(swiftReturnType))

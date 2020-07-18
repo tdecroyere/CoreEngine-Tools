@@ -262,7 +262,8 @@ namespace CoreEngineInteropGenerator
                         else if (method.ReturnType.ToString() == "string")
                         {
                             IndentCode(stringBuilder, currentIndentationLevel);
-                            stringBuilder.AppendLine($"var result = System.Text.Encoding.Unicode.GetString(output).TrimEnd('\0');");
+                            // stringBuilder.AppendLine($"var result = System.Text.Encoding.Unicode.GetString(output).TrimEnd('\0');");
+                            stringBuilder.AppendLine($"var result = System.Text.Encoding.UTF8.GetString(output).TrimEnd('\0');");
 
                             IndentCode(stringBuilder, currentIndentationLevel);
                             stringBuilder.AppendLine($"ArrayPool<byte>.Shared.Return(output);");
