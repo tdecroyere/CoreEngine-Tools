@@ -19,18 +19,41 @@ namespace CoreEngineInteropGenerator
                 return string.Empty;
             }
 
+            var interfaces = compilationUnit.DescendantNodes().OfType<InterfaceDeclarationSyntax>();
+
             var nullableTypes = new List<string>();
 
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("using System;");
             stringBuilder.AppendLine("using System.Buffers;");
             stringBuilder.AppendLine("using System.Numerics;");
+
+            // TODO: Find a way to get external types so we can generate interop code
+
+            // foreach (var interfaceNode in interfaces)
+            // {
+            //     foreach (var member in interfaceNode.Members)
+            //     {
+            //         if (member.Kind() == SyntaxKind.MethodDeclaration)
+            //         {
+            //             var method = (MethodDeclarationSyntax)member;
+            //             var parameters = method.ParameterList.Parameters;
+                        
+            //             for (var i = 0; i < parameters.Count; i++)
+            //             {
+            //                 var parameter = parameters[i];
+
+            //                 compilationUnit.
+            //             }
+            //         }
+            //     }
+            // }
+
             stringBuilder.AppendLine();
 
             stringBuilder.AppendLine("namespace CoreEngine.HostServices.Interop");
             stringBuilder.AppendLine("{");
 
-            var interfaces = compilationUnit.DescendantNodes().OfType<InterfaceDeclarationSyntax>();
             var delegateNameList = new List<string>();
 
             foreach (var interfaceNode in interfaces)

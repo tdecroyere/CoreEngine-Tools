@@ -349,9 +349,19 @@ namespace CoreEngineInteropGenerator
                 return "Int" + (isInteropCode ? "32" : string.Empty);
             }
 
+            else if (typeName == "IntPtr")
+            {
+                return "UnsafeMutableRawPointer?";
+            }
+
             else if (typeName == "uint")
             {
                 return "UInt" + (isInteropCode ? "32" : string.Empty);
+            }
+
+            else if (typeName == "ulong")
+            {
+                return "UInt";
             }
 
             else if (typeName == "float")

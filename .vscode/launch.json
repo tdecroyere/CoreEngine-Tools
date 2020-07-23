@@ -13,7 +13,7 @@
             "stopAtEntry": false,
             "osx": {
                 "cwd": "${workspaceFolder}/build/MacOS",
-                "program": "./CoreEngineCompiler"
+                "program": "./CoreEngineCompiler.dll"
             },
             "windows": {
                 "cwd": "${workspaceFolder}/build/Windows/",
