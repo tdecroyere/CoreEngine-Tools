@@ -1,11 +1,13 @@
 #define RootSignatureDef \
     "RootFlags(0), " \
-    "SRV(t0), " \
-                     "SRV(t1), " \
-                     "SRV(t2), " \
-                     //"SRV(t3, numDescriptors = 100), " \
+    "SRV(t0, flags = DATA_STATIC), " \
+    "SRV(t1, flags = DATA_STATIC), " \
+    "SRV(t2, flags = DATA_STATIC), " \
+    "DescriptorTable(SRV(t3, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE)), " \
     "StaticSampler(s0," \
                  "filter = FILTER_MIN_MAG_MIP_LINEAR)"
+
+#pragma pack_matrix(row_major)
 
 struct VertexInput
 {
@@ -33,12 +35,16 @@ struct RectangleSurface
     float2 TextureMaxPoint;
     int TextureIndex;
     bool IsOpaque;
+
+    // TODO: Find a common solution for alignment issues
+    int Reserved4;
+    int Reserved5;
 };
 
 StructuredBuffer<VertexInput> VertexBuffer: register(t0);
 StructuredBuffer<RenderPass> RenderPassParameters: register(t1);
 StructuredBuffer<RectangleSurface> RectangleSurfaces: register(t2);
-// Texture2D SurfaceTextures[100]: register(t3);
+Texture2D SurfaceTextures[100]: register(t3);
 SamplerState TextureSampler: register(s0);
 
 VertexOutput VertexMain(const uint vertexId: SV_VertexID, const uint instanceId: SV_InstanceID)
@@ -50,8 +56,7 @@ VertexOutput VertexMain(const uint vertexId: SV_VertexID, const uint instanceId:
     float4x4 worldMatrix = RectangleSurfaces[instanceId].WorldMatrix;
     float4x4 projectionMatrix = RenderPassParameters[0].ProjectionMatrix;
 
-    //output.Position = float4(input.Position, 0.0, 1.0);//mul(mul(float4(input.Position, 0.0, 1.0), worldMatrix), projectionMatrix);
-    output.Position = mul(mul(float4(input.Position, 0.0, 1.0), projectionMatrix), worldMatrix);
+    output.Position = mul(mul(float4(input.Position, 0.0, 1.0), worldMatrix), projectionMatrix);
     output.InstanceId = instanceId;
 
     float2 minPoint = RectangleSurfaces[instanceId].TextureMinPoint;
@@ -92,9 +97,9 @@ PixelOutput PixelMain(const VertexOutput input)
     PixelOutput output = (PixelOutput)0;
 
     int textureIndex = RectangleSurfaces[input.InstanceId].TextureIndex;
-    //Texture2D diffuseTexture = SurfaceTextures[textureIndex];
+    Texture2D diffuseTexture = SurfaceTextures[textureIndex];
 
-    float4 textureColor = float4(1, 0, 0, 1);//diffuseTexture.Sample(TextureSampler, input.TextureCoordinates);
+    float4 textureColor = diffuseTexture.Sample(TextureSampler, input.TextureCoordinates);
 
     if (!input.IsOpaque)
     {

@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using CoreEngine.Tools.Common;
 using Microsoft.Win32;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 {
@@ -39,57 +41,77 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             // TODO: Remove intermediate files
             // TODO: Check debug profile
 
+            var entryPoints = new List<string>();
+            var shaderContent = System.Text.Encoding.UTF8.GetString(data.ToArray());
+
+            var regex = new Regex(@"(VertexMain|PixelMain|\[numthreads\(.*void\s(?<entryPoint>[^\(]*)\()", RegexOptions.Singleline);
+            var matches = regex.Matches(shaderContent);
+
+            foreach (Match match in matches)
+            {
+                if (!string.IsNullOrEmpty(match.Groups[2].Value))
+                {
+                    entryPoints.Add(match.Groups[2].Value);
+                }
+
+                else
+                {
+                    entryPoints.Add(match.Groups[0].Value);
+                }
+            }
+
+            foreach (var entryPoint in entryPoints)
+            {
+            }
+
             var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.hlsl");
-            var vsOutputShaderFile = Path.Combine(tempFolder, "vs_tempShader.cso");
-            var psOutputShaderFile = Path.Combine(tempFolder, "ps_tempShader.cso");
-            var rsOutputShaderFile = Path.Combine(tempFolder, "rs_tempShader.cso");
+            var outputShaderFile = Path.Combine(tempFolder, "tempShader.cso");
 
             await File.WriteAllBytesAsync(inputShaderFile, data.ToArray());
-
             using var buildProcess = new Process();
 
-            if (useDxil)
+            var shaderTable = new Dictionary<string, byte[]>();
+
+            foreach (var entryPoint in entryPoints)
             {
-                buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}dxc.exe";
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T vs_6_0 -E VertexMain -Fo {vsOutputShaderFile}";
+                var target = "cs_5_1";
+
+                if (entryPoint == "VertexMain")
+                {
+                    target = "vs_5_1";
+                }
+
+                else if (entryPoint == "PixelMain")
+                {
+                    target = "ps_5_1";
+                }
+
+                Logger.WriteMessage($"Compiling entry point: {entryPoint} {target}");
+                
+                if (useDxil)
+                {
+                    buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}dxc.exe";
+                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+                }
+
+                else
+                {
+                    buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}fxc.exe";
+                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /Zi /T {target} /E {entryPoint} /Fo {outputShaderFile}";
+                }
+
+                buildProcess.Start();
+                buildProcess.WaitForExit();
+
+                if (buildProcess.ExitCode != 0)
+                {
+                    return null;
+                }            
+
+                var shaderData = await File.ReadAllBytesAsync(outputShaderFile);
+                shaderTable.Add(entryPoint, shaderData);
             }
-
-            else
-            {
-                buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}fxc.exe";
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /Zi /T vs_5_1 /E VertexMain /Fo {vsOutputShaderFile}";
-            }
-
-            buildProcess.Start();
-            buildProcess.WaitForExit();
-
-            if (buildProcess.ExitCode != 0)
-            {
-                return null;
-            }            
-
-            var vertexShaderData = await File.ReadAllBytesAsync(vsOutputShaderFile);
-
-            if (useDxil)
-            {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T ps_6_0 -E PixelMain -Fo {psOutputShaderFile}";
-            }
-
-            else
-            {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /Zi /T ps_5_1 /E PixelMain /Fo {psOutputShaderFile}";
-            }
-
-            buildProcess.Start();
-            buildProcess.WaitForExit();
-
-            if (buildProcess.ExitCode != 0)
-            {
-                return null;
-            }
-
-            var pixelShaderData = await File.ReadAllBytesAsync(psOutputShaderFile);
 
             if (useDxil)
             {
@@ -98,7 +120,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             else
             {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T rootsig_1_1 /E RootSignatureDef /Fo {rsOutputShaderFile}";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T rootsig_1_1 /E RootSignatureDef /Fo {outputShaderFile}";
             }
 
             buildProcess.Start();
@@ -109,16 +131,23 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 return null;
             }
 
-            var rootSignatureData = await File.ReadAllBytesAsync(rsOutputShaderFile);
+            var rootSignatureData = await File.ReadAllBytesAsync(outputShaderFile);
 
             var destinationMemoryStream = new MemoryStream();
             using var streamWriter = new BinaryWriter(destinationMemoryStream);
-            streamWriter.Write(vertexShaderData.Length);
-            streamWriter.Write(vertexShaderData);
-            streamWriter.Write(pixelShaderData.Length); // TODO: Use span overload?
-            streamWriter.Write(pixelShaderData);
             streamWriter.Write(rootSignatureData.Length); // TODO: Use span overload?
             streamWriter.Write(rootSignatureData);
+
+            streamWriter.Write(shaderTable.Keys.Count);
+
+            foreach (var shaderEntry in shaderTable)
+            {
+                streamWriter.Write(shaderEntry.Key.Length);
+                streamWriter.Write(shaderEntry.Key.ToCharArray());
+                streamWriter.Write(shaderEntry.Value.Length);
+                streamWriter.Write(shaderEntry.Value);
+            }
+
             streamWriter.Flush();
 
             destinationMemoryStream.Flush();

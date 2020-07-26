@@ -1,6 +1,6 @@
 #define RootSignatureDef \
     "RootFlags(0), " \
-    "DescriptorTable(SRV(t0, numDescriptors = 1))"
+    "DescriptorTable(SRV(t0, numDescriptors = 1, flags = DESCRIPTORS_VOLATILE))"
 
 Texture2D InputTexture: register(t0);
 
