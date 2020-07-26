@@ -19,6 +19,8 @@ namespace CoreEngineInteropGenerator
                 return string.Empty;
             }
 
+            var useFunctionPointers = true;
+
             var interfaces = compilationUnit.DescendantNodes().OfType<InterfaceDeclarationSyntax>();
 
             var nullableTypes = new List<string>();
@@ -55,6 +57,7 @@ namespace CoreEngineInteropGenerator
             stringBuilder.AppendLine("{");
 
             var delegateNameList = new List<string>();
+            var functionPointerTypes = new List<string>();
 
             foreach (var interfaceNode in interfaces)
             {
@@ -63,6 +66,7 @@ namespace CoreEngineInteropGenerator
                 {
                     if (member.Kind() == SyntaxKind.MethodDeclaration)
                     {
+                        var functionPointerStringBuilder = new StringBuilder();
                         bool hasStringReturn = false;
 
                         var method = (MethodDeclarationSyntax)member;
@@ -82,9 +86,16 @@ namespace CoreEngineInteropGenerator
                         var delegateVariableName = char.ToLowerInvariant(delegateTypeName[0]) + delegateTypeName.Substring(1);
                         var returnType = method.ReturnType.ToString();
 
-                        // Generate delegate
-                        IndentCode(stringBuilder, 1);
-                        stringBuilder.Append("internal unsafe delegate ");
+                        if (!useFunctionPointers)
+                        {
+                            // Generate delegate
+                            IndentCode(stringBuilder, 1);
+                        }
+                        
+                        if (!useFunctionPointers)
+                        {
+                            stringBuilder.Append("internal unsafe delegate ");
+                        }
 
                         if (returnType == "string")
                         {
@@ -98,44 +109,76 @@ namespace CoreEngineInteropGenerator
                             returnType = $"Nullable{returnType[0..^1]}";
                         }
 
-                        stringBuilder.Append(returnType);
-                        stringBuilder.Append($" {delegateTypeName}(IntPtr context");
+                        if (!useFunctionPointers)
+                        {
+                            stringBuilder.Append(returnType);
+                            stringBuilder.Append($" {delegateTypeName}(IntPtr context");
+                        }
+
+                        functionPointerStringBuilder.Append("delegate* cdecl<IntPtr, ");
 
                         for (var i = 0; i < parameters.Count; i++)
                         {
                             var parameter = parameters[i];
 
-                            stringBuilder.Append(", ");
+                            if (!useFunctionPointers)
+                            {
+                                stringBuilder.Append(", ");
+                            }
 
                             if (parameter.Type!.ToString().Contains("ReadOnlySpan<"))
                             {
                                 var index = parameter.Type!.ToString().IndexOf("<");
                                 var parameterType = parameter.Type!.ToString().Substring(index).Replace("<", string.Empty).Replace(">", string.Empty);
                                 
-                                stringBuilder.Append($"{parameterType}* {parameter.Identifier}, int {parameter.Identifier}Length");
+                                if (!useFunctionPointers)
+                                {
+                                    stringBuilder.Append($"{parameterType}* {parameter.Identifier}, int {parameter.Identifier}Length");
+                                }
+
+                                functionPointerStringBuilder.Append($"{parameterType}*, int, ");
                             }
 
                             else
                             {
-                                stringBuilder.Append($"{parameter.Type} {parameter.Identifier}");
+                                if (!useFunctionPointers)
+                                {
+                                    stringBuilder.Append($"{parameter.Type} {parameter.Identifier}");
+                                }
+
+                                functionPointerStringBuilder.Append($"{parameter.Type}, ");
                             }
                         }
 
                         if (hasStringReturn)
                         {
-                            stringBuilder.Append(", ");
-                            stringBuilder.Append($"byte* output");
+                            if (!useFunctionPointers)
+                            {
+                                stringBuilder.Append(", ");
+                                stringBuilder.Append($"byte* output");
+                            }
+
+                            functionPointerStringBuilder.Append($"byte*, ");
                         }
 
-                        stringBuilder.AppendLine(");");
+                        if (!useFunctionPointers)
+                        {
+                            stringBuilder.AppendLine(");");
+                        }
+
+                        functionPointerStringBuilder.Append($"{returnType}>");
+                        functionPointerTypes.Add(functionPointerStringBuilder.ToString());
                     }
                 }
 
-                // Generate struct
-                stringBuilder.AppendLine();
+                if (!useFunctionPointers)
+                {
+                    // Generate struct
+                    stringBuilder.AppendLine();
+                }
 
                 IndentCode(stringBuilder, 1);
-                stringBuilder.AppendLine($"public struct {interfaceNode.Identifier.Text.Substring(1)} : {interfaceNode.Identifier}");
+                stringBuilder.AppendLine($"public unsafe struct {interfaceNode.Identifier.Text.Substring(1)} : {interfaceNode.Identifier}");
                 
                 IndentCode(stringBuilder, 1);
                 stringBuilder.AppendLine("{");
@@ -144,6 +187,7 @@ namespace CoreEngineInteropGenerator
                 stringBuilder.AppendLine("private IntPtr context { get; }");
             
                 delegateNameList = new List<string>();
+                var memberIndex = 0;
 
                 foreach (var member in interfaceNode.Members)
                 {
@@ -162,12 +206,22 @@ namespace CoreEngineInteropGenerator
                         }
 
                         var delegateVariableName = char.ToLowerInvariant(delegateTypeName[0]) + delegateTypeName.Substring(1);
+                        var functionPointerType = functionPointerTypes[memberIndex];
 
                         // Generate struct field
                         stringBuilder.AppendLine();
 
                         IndentCode(stringBuilder, 2);
-                        stringBuilder.AppendLine($"private {delegateTypeName} {delegateVariableName} {{ get; }}");
+
+                        if (!useFunctionPointers)
+                        {
+                            stringBuilder.AppendLine($"private {delegateTypeName} {delegateVariableName} {{ get; }}");
+                        }
+
+                        else
+                        {
+                            stringBuilder.AppendLine($"private {functionPointerType} {delegateVariableName} {{ get; }}");
+                        }
 
                         // Generate struct method
                         IndentCode(stringBuilder, 2);
@@ -317,6 +371,8 @@ namespace CoreEngineInteropGenerator
 
                         IndentCode(stringBuilder, 2);
                         stringBuilder.AppendLine("}");
+                        
+                        memberIndex++;
                     }
                 }
 
