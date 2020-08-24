@@ -204,6 +204,11 @@ namespace CoreEngineInteropGenerator
                 result = "void";
             }
 
+            else if (typeName == "IntPtr")
+            {
+                result = "void*";
+            }
+
             else if (typeName == "string" || typeName == "string?")
             {
                 result = "char*";
@@ -231,7 +236,7 @@ namespace CoreEngineInteropGenerator
         {
             var builtInTypes = new string[] 
             {
-                "void", "bool", "byte", "short", "ushort", "int", "uint", "ulong", "float", "double", "char", "string", "string?"
+                "void", "bool", "byte", "short", "IntPtr", "ushort", "int", "uint", "ulong", "float", "double", "char", "string", "string?"
             };
 
             return builtInTypes.Contains(typeName);
