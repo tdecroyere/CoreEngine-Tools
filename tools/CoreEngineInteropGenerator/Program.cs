@@ -100,6 +100,7 @@ namespace CoreEngineInteropGenerator
 
                 var swiftInteropImplementationTypes = new Dictionary<string, string>()
                 {
+                    { "INativeUIService", "MacOSNativeUIService" },
                     { "IGraphicsService", "MetalGraphicsService" },
                     { "IInputsService", "InputsManager" }
                 };
@@ -118,6 +119,7 @@ namespace CoreEngineInteropGenerator
                 // Generate Cpp Code
                 var cppImplementationTypes = new Dictionary<string, string>()
                 {
+                    { "INativeUIService", "WindowsNativeUIService" },
                     { "IGraphicsService", "Direct3D12GraphicsService" },
                     { "IInputsService", "WindowsInputsService" }
                 };
