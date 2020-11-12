@@ -279,7 +279,7 @@ namespace CoreEngineInteropGenerator
                         }
 
                         IndentCode(stringBuilder, currentIndentationLevel++);
-                        stringBuilder.AppendLine($"if (this.context != null && this.{delegateVariableName} != null)");
+                        stringBuilder.AppendLine($"if (this.{delegateVariableName} != null)");
                         IndentCode(stringBuilder, currentIndentationLevel - 1);
                         stringBuilder.AppendLine("{");
 
