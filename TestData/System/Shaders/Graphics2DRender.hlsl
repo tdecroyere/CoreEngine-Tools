@@ -5,7 +5,7 @@
     "SRV(t2, flags = DATA_STATIC), " \
     "DescriptorTable(SRV(t3, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE)), " \
     "StaticSampler(s0," \
-                 "filter = FILTER_MIN_MAG_MIP_LINEAR)"
+                 "filter = FILTER_MIN_MAG_MIP_POINT)"
 
 #pragma pack_matrix(row_major)
 
@@ -62,22 +62,22 @@ VertexOutput VertexMain(const uint vertexId: SV_VertexID, const uint instanceId:
     float2 minPoint = RectangleSurfaces[instanceId].TextureMinPoint;
     float2 maxPoint = RectangleSurfaces[instanceId].TextureMaxPoint;
 
-    if ((vertexId) % 4 == 0)
+    if (vertexId == 0)
     {
         output.TextureCoordinates = float2(minPoint.x, minPoint.y);
     }
 
-    else if ((vertexId) % 4 == 1)
+    else if (vertexId == 1)
     {
         output.TextureCoordinates = float2(maxPoint.x, minPoint.y);
     }
 
-    else if ((vertexId) % 4 == 2)
+    else if (vertexId == 2)
     {
         output.TextureCoordinates = float2(minPoint.x, maxPoint.y);
     }
 
-    else if ((vertexId) % 4 == 3)
+    else if (vertexId == 3)
     {
         output.TextureCoordinates = float2(maxPoint.x, maxPoint.y);
     }

@@ -17,7 +17,7 @@ float3 ToneMapACES(float3 x)
     return saturate((x * (a * x + b)) / ( x * ( c * x + d) + e));
 }
 
-[numthreads(32, 32, 1)]
+[numthreads(8, 8, 1)]
 void ToneMap(uint2 pixelCoordinates: SV_DispatchThreadID)
 {                
     // TODO: Check if we can output linear values here or do we need to convert to srgb

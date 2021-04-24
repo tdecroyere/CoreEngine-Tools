@@ -15,7 +15,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
     {
         public static async Task<ReadOnlyMemory<byte>?> CompileDirectXShaderAsync(ReadOnlyMemory<byte> data)
         {
-            var useDxil = false;
+            var useDxil = true;
 
             Logger.WriteMessage("Compiling DirectX shader with command line tools");
 
@@ -75,24 +75,24 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             foreach (var entryPoint in entryPoints)
             {
-                var target = "cs_5_1";
+                var target = "cs_6_6";
 
                 if (entryPoint == "VertexMain")
                 {
-                    target = "vs_5_1";
+                    target = "vs_6_6";
                 }
 
                 else if (entryPoint == "PixelMain")
                 {
-                    target = "ps_5_1";
+                    target = "ps_6_6";
                 }
 
                 Logger.WriteMessage($"Compiling entry point: {entryPoint} {target}");
                 
                 if (useDxil)
                 {
-                    buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}dxc.exe";
-                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+                    buildProcess.StartInfo.FileName = $".\\dxc\\dxc.exe";
+                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /Zi -T {target} -E {entryPoint} -Fo {outputShaderFile}";
                 }
 
                 else
@@ -115,7 +115,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             if (useDxil)
             {
-                //buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T ps_6_0 -E PixelMain -Fo {psOutputShaderFile}";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T rootsig_1_1 -E RootSignatureDef -Fo {outputShaderFile}";
             }
 
             else

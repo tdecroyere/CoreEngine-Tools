@@ -59,7 +59,7 @@ struct Camera
 StructuredBuffer<Camera> Cameras: register(t1);
 AppendStructuredBuffer<IndirectCommand> IndirectCommandBuffers: register(u1);
 
-[numthreads(32, 32, 1)]
+[numthreads(8, 8, 1)]
 void GenerateIndirectCommands(uint2 pixelCoordinates: SV_DispatchThreadID)
 {                
     IndirectCommand command = (IndirectCommand)0;

@@ -64,7 +64,7 @@ Entities:
         MaterialResourceId: 'resource:/TestWhiteMaterial.material'
   - Entity: 'LightGenerator'
     Components:
-      - Component: 'CoreEngine.Tests.EcsTest.LightGeneratorComponent'
+      - Component: 'CoreEngine.Samples.SceneViewer.LightGeneratorComponent'
         Dimensions: [34, 14, 19]
         LightCount: 5
   - Entity: 'SponzaModel'
@@ -92,7 +92,7 @@ Entities:
       - Component: 'CoreEngine.Components.TransformComponent'
         Position: [-1, 1.8, 0]
         RotationY: 90
-      - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
+      - Component: 'CoreEngine.Samples.SceneViewer.PlayerComponent'
         MovementAcceleration: 300
   - Entity: 'DebugCamera'
     Components:
@@ -101,5 +101,5 @@ Entities:
         Position: [-1, 10, 0]
         RotationY: 90
         RotationX: 90
-      # - Component: 'CoreEngine.Tests.EcsTest.PlayerComponent'
+      # - Component: 'CoreEngine.Samples.SceneViewer.PlayerComponent'
       #   MovementAcceleration: 30000 

@@ -1,8 +1,11 @@
 #define RootSignatureDef \
     "RootFlags(0), " \
-    "DescriptorTable(SRV(t0, numDescriptors = 1, flags = DESCRIPTORS_VOLATILE))"
+    "DescriptorTable(SRV(t0, numDescriptors = 1, flags = DESCRIPTORS_VOLATILE))," \
+    "StaticSampler(s0," \
+                 "filter = FILTER_MIN_MAG_MIP_POINT)"
 
 Texture2D InputTexture: register(t0);
+SamplerState TextureSampler: register(s0);
 
 struct VertexOutput
 {
@@ -48,17 +51,18 @@ struct PixelOutput
 
 PixelOutput PixelMain(const VertexOutput input)
 {
-           
     PixelOutput output = (PixelOutput)0;
 
-    int width;
-    int height;
+    float4 inputColor = InputTexture.Sample(TextureSampler, input.TextureCoordinates);
 
-    InputTexture.GetDimensions(width, height);
+    // int width;
+    // int height;
 
-    uint2 pixel = uint2(input.TextureCoordinates.x * width, input.TextureCoordinates.y * height);  
+    // InputTexture.GetDimensions(width, height);
 
-    float4 inputColor = InputTexture[pixel];
+    // uint2 pixel = uint2(input.TextureCoordinates.x * width, input.TextureCoordinates.y * height);  
+
+    // float4 inputColor = InputTexture[pixel];
     output.Color = inputColor;
     return output; 
 }
