@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <WarningsAsErrors>CS8600;CS8602;CS8603;CS8618;CS8610;CS8601</WarningsAsErrors>
     <NoWarn>CA1303;CA1815;CA2007;CS8604;CA1307</NoWarn>
   </PropertyGroup>
