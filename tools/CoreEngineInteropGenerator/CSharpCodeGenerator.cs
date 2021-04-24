@@ -115,7 +115,8 @@ namespace CoreEngineInteropGenerator
                             stringBuilder.Append($" {delegateTypeName}(IntPtr context");
                         }
 
-                        functionPointerStringBuilder.Append("delegate* cdecl<IntPtr, ");
+                        // functionPointerStringBuilder.Append("delegate* unmanaged[Cdecl, SuppressGCTransition]<IntPtr, ");
+                        functionPointerStringBuilder.Append("delegate* unmanaged[Cdecl]<IntPtr, ");
 
                         for (var i = 0; i < parameters.Count; i++)
                         {
@@ -278,7 +279,7 @@ namespace CoreEngineInteropGenerator
                         }
 
                         IndentCode(stringBuilder, currentIndentationLevel++);
-                        stringBuilder.AppendLine($"if (this.context != null && this.{delegateVariableName} != null)");
+                        stringBuilder.AppendLine($"if (this.{delegateVariableName} != null)");
                         IndentCode(stringBuilder, currentIndentationLevel - 1);
                         stringBuilder.AppendLine("{");
 
