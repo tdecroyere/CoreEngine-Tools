@@ -71,5 +71,6 @@ fragment PixelOutput PixelMain(const VertexOutput input [[stage_in]],
 
     float4 inputColor = shaderParameters.InputTexture.read(pixel, 0);
     output.Color = inputColor;
+    //output.Color = float4(1, 1, 0, 0);
     return output; 
 }
