@@ -44,7 +44,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             var entryPoints = new List<string>();
             var shaderContent = System.Text.Encoding.UTF8.GetString(data.ToArray());
 
-            var regex = new Regex(@"(VertexMain|PixelMain|\[numthreads\(.*void\s(?<entryPoint>[^\(]*)\()", RegexOptions.Singleline);
+            var regex = new Regex(@"(VertexMain|PixelMain|MeshMain|\[numthreads\(.*void\s(?<entryPoint>[^\(]*)\()", RegexOptions.Singleline);
             var matches = regex.Matches(shaderContent);
 
             foreach (Match match in matches)
@@ -58,10 +58,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 {
                     entryPoints.Add(match.Groups[0].Value);
                 }
-            }
-
-            foreach (var entryPoint in entryPoints)
-            {
             }
 
             var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
@@ -87,12 +83,17 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                     target = "ps_6_6";
                 }
 
+                else if (entryPoint == "MeshMain")
+                {
+                    target = "ms_6_6";
+                }
+
                 Logger.WriteMessage($"Compiling entry point: {entryPoint} {target}");
                 
                 if (useDxil)
                 {
                     buildProcess.StartInfo.FileName = $".\\dxc\\dxc.exe";
-                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /Zi -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /all_resources_bound /Zi -Qembed_debug -T {target} -E {entryPoint} -Fo {outputShaderFile}";
                 }
 
                 else
@@ -115,7 +116,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             if (useDxil)
             {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -T rootsig_1_1 -E RootSignatureDef -Fo {outputShaderFile}";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /all_resources_bound -T rootsig_1_1 -E RootSignatureDef -Fo {outputShaderFile}";
             }
 
             else
