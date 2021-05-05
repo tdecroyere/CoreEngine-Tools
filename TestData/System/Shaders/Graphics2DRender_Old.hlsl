@@ -57,6 +57,7 @@ static float4 rectangleTextureCoordinatesWeights[] =
     float4(0, 0, 1, 1)
 };
 
+//TODO: Optimize with outputs to 256
 [OutputTopology("triangle")]
 [NumThreads(128, 1, 1)]
 void MeshMain(in uint groupId : SV_GroupID, in uint groupThreadId : SV_GroupThreadID, out vertices VertexOutput vertices[128], out indices uint3 indices[128])

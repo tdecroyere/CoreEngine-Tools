@@ -44,7 +44,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             var entryPoints = new List<string>();
             var shaderContent = System.Text.Encoding.UTF8.GetString(data.ToArray());
 
-            var regex = new Regex(@"(VertexMain|PixelMain|MeshMain|\[numthreads\(.*void\s(?<entryPoint>[^\(]*)\()", RegexOptions.Singleline);
+            var regex = new Regex(@"(VertexMain|PixelMain|AmplificationMain|MeshMain|\[numthreads\(.*void\s(?<entryPoint>[^\(]*)\()", RegexOptions.Singleline);
             var matches = regex.Matches(shaderContent);
 
             foreach (Match match in matches)
@@ -81,6 +81,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 else if (entryPoint == "PixelMain")
                 {
                     target = "ps_6_6";
+                }
+
+                else if (entryPoint == "AmplificationMain")
+                {
+                    target = "as_6_6";
                 }
 
                 else if (entryPoint == "MeshMain")
