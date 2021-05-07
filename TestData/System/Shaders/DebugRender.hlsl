@@ -1,11 +1,13 @@
 #define RootSignatureDef \
     "RootFlags(0), " \
-    "RootConstants(num32BitConstants=3, b0)," \
+    "RootConstants(num32BitConstants=5, b0)," \
     "SRV(t0, flags = DATA_STATIC), " \
     "SRV(t1, flags = DATA_STATIC)," \
-    "UAV(u0, flags = DATA_VOLATILE)"
+    "SRV(t2, flags = DATA_STATIC)," \
+    "SRV(t3, flags = DATA_STATIC)"
 
 #pragma pack_matrix(row_major)
+#define WAVE_SIZE 32
 
 static const float PI = 3.14159265f;
 
@@ -19,17 +21,17 @@ enum DebugPrimitiveType : uint
 
 struct ShaderParameters
 {
-    uint DebugPrimitiveCount;
+    uint TotalDebugPrimitiveCount;
     uint InstanceOffset;
+    uint VertexBufferOffset;
+    uint IndexBufferOffset;
     DebugPrimitiveType DebugPrimitiveType;
 };
 
 struct DebugPrimitive
 {
-    float4 Parameter1;
-    float4 Parameter2;
-    float3 Color;
-    DebugPrimitiveType PrimitiveType;
+    float4x4 WorldMatrix;
+    float4 Color;
 };
 
 struct VertexInput
@@ -46,171 +48,72 @@ struct VertexOutput
 
 struct RenderPass
 {
-    float4x4 ViewMatrix;
-    float4x4 ProjectionMatrix;
-};
-
-struct Meshlet
-{
-    float3 Vertices[90];
-    uint2 Primitives[90];
-    float3 Color;
+    float4x4 ViewProjMatrix;
 };
 
 struct Payload
 {
     uint VertexCount;
     uint PrimitiveCount;
+    uint TotalDebugPrimitiveCount;
     uint MaxDebugPrimitiveCountPerGroup;
-    uint DebugPrimitiveCount;
-    uint InstanceOffset;
+
+    float4x4 WorldViewProjMatrices[WAVE_SIZE];
+    float3 Colors[WAVE_SIZE];
 };
 
 ConstantBuffer<ShaderParameters> parameters : register(b0);
 StructuredBuffer<DebugPrimitive> debugPrimitives: register(t0);
 StructuredBuffer<RenderPass> RenderPassParameters: register(t1);
 
-RWStructuredBuffer<Meshlet> meshletBuffer: register(u0);
+StructuredBuffer<float3> vertexBuffer: register(t2);
+StructuredBuffer<uint2> indexBuffer: register(t3);
 
-Meshlet InitLine(DebugPrimitive debugPrimitive)
-{
-    Meshlet meshlet = (Meshlet)0;
-    meshlet.Vertices[0] = debugPrimitive.Parameter1.xyz;
-    meshlet.Vertices[1] = debugPrimitive.Parameter2.xyz;
+groupshared Payload sharedPayload;
 
-    meshlet.Primitives[0] = uint2(0, 1);
-    meshlet.Color = debugPrimitive.Color;
-
-    return meshlet;
-}
-
-[NumThreads(64, 1, 1)]
+[NumThreads(WAVE_SIZE, 1, 1)]
 void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_GroupThreadID)
 {
-    const uint maxDebugPrimitiveCount = 64;
+    const uint maxDebugPrimitiveCount = WAVE_SIZE;
 
-    Payload payload = (Payload)0;
-    payload.DebugPrimitiveCount = min(maxDebugPrimitiveCount, parameters.DebugPrimitiveCount - groupId * maxDebugPrimitiveCount);
-    payload.InstanceOffset = groupId * maxDebugPrimitiveCount;
+    uint totalDebugPrimitiveCount = min(maxDebugPrimitiveCount, parameters.TotalDebugPrimitiveCount - groupId * maxDebugPrimitiveCount);
+    uint vertexCount;
+    uint primitiveCount;
+    uint maxDebugPrimitiveCountPerGroup;
 
-    if (parameters.DebugPrimitiveType == DebugPrimitiveType::Line)
+    switch (parameters.DebugPrimitiveType)
     {
-        payload.VertexCount = 2;
-        payload.PrimitiveCount = 1;
-        payload.MaxDebugPrimitiveCountPerGroup = 64;
+        case DebugPrimitiveType::Cube:
+            vertexCount = 8;
+            primitiveCount = 12;
+            maxDebugPrimitiveCountPerGroup = 20;
+            break;
+
+        case DebugPrimitiveType::Sphere:
+            vertexCount = 90;
+            primitiveCount = 90;
+            maxDebugPrimitiveCountPerGroup = 2;
+            break;
+
+        default:
+            vertexCount = 2;
+            primitiveCount = 1;
+            maxDebugPrimitiveCountPerGroup = 64;
+            break;
     }
-
-    else if (parameters.DebugPrimitiveType == DebugPrimitiveType::Cube)
-    {
-        payload.VertexCount = 8;
-        payload.PrimitiveCount = 12;
-        payload.MaxDebugPrimitiveCountPerGroup = 10;
-    }
-
-    else if (parameters.DebugPrimitiveType == DebugPrimitiveType::Sphere)
-    {
-        const uint steps = 30;
-
-        payload.VertexCount = steps * 3;
-        payload.PrimitiveCount = steps * 3;
-        payload.MaxDebugPrimitiveCountPerGroup = 1;
-    }
-
-    // TODO: Do frustum culling per primitive type
-    Meshlet meshlet = (Meshlet)0;
-
+  
     uint debugPrimitiveIndex = parameters.InstanceOffset + groupId * maxDebugPrimitiveCount + groupThreadId;
     DebugPrimitive debugPrimitive = debugPrimitives[debugPrimitiveIndex];
+    float4x4 worldMatrix = debugPrimitive.WorldMatrix;
 
-    if (parameters.DebugPrimitiveType == DebugPrimitiveType::Line)
-    {
-        meshlet.Vertices[0] = debugPrimitive.Parameter1.xyz;
-        meshlet.Vertices[1] = debugPrimitive.Parameter2.xyz;
-        meshlet.Primitives[0] = uint2(0, 1);
-        meshlet.Color = debugPrimitive.Color;
-    }
+    sharedPayload.TotalDebugPrimitiveCount = totalDebugPrimitiveCount;
+    sharedPayload.MaxDebugPrimitiveCountPerGroup = maxDebugPrimitiveCountPerGroup;
+    sharedPayload.VertexCount = vertexCount;
+    sharedPayload.PrimitiveCount = primitiveCount;
+    sharedPayload.WorldViewProjMatrices[groupThreadId] = mul(worldMatrix, RenderPassParameters[0].ViewProjMatrix);
+    sharedPayload.Colors[groupThreadId] = debugPrimitive.Color.rgb;
 
-    else if (parameters.DebugPrimitiveType == DebugPrimitiveType::Cube)
-    {
-        float3 minPoint = debugPrimitive.Parameter1.xyz;
-        float3 maxPoint = debugPrimitive.Parameter2.xyz;
-
-        float xSize = maxPoint.x - minPoint.x;
-        float ySize = maxPoint.y - minPoint.y;
-        float zSize = maxPoint.z - minPoint.z;
-
-        meshlet.Vertices[0] = minPoint;
-        meshlet.Vertices[1] = minPoint + float3(0, 0, zSize);
-        meshlet.Vertices[2] = minPoint + float3(xSize, 0, 0);
-        meshlet.Vertices[3] = minPoint + float3(xSize, 0, zSize);
-        meshlet.Vertices[4] = minPoint + float3(0, ySize, 0);
-        meshlet.Vertices[5] = minPoint + float3(0, ySize, zSize);
-        meshlet.Vertices[6] = minPoint + float3(xSize, ySize, 0);
-        meshlet.Vertices[7] = minPoint + float3(xSize, ySize, zSize);
-
-        meshlet.Primitives[0] = uint2(0, 1);
-        meshlet.Primitives[1] = uint2(0, 2);
-        meshlet.Primitives[2] = uint2(1, 3);
-        meshlet.Primitives[3] = uint2(2, 3);
-
-        meshlet.Primitives[4] = uint2(4, 5);
-        meshlet.Primitives[5] = uint2(4, 6);
-        meshlet.Primitives[6] = uint2(5, 7);
-        meshlet.Primitives[7] = uint2(6, 7);
-
-        meshlet.Primitives[8] = uint2(0, 4);
-        meshlet.Primitives[9] = uint2(2, 6);
-        meshlet.Primitives[10] = uint2(3, 7);
-        meshlet.Primitives[11] = uint2(1, 5);
-
-        meshlet.Color = debugPrimitive.Color;
-    }
-
-    else if (parameters.DebugPrimitiveType == DebugPrimitiveType::Sphere)
-    {
-        float3 position = debugPrimitive.Parameter1.xyz;
-        float radius = debugPrimitive.Parameter2.x;
-        const uint steps = 30;
-
-        float stepAngle = (360.0 * PI / 180.0) / steps;
-
-        uint currentVertexCount = 0;
-        uint currentPrimitiveCount = 0;
-
-        // TODO: optimize the same calculations with waves?
-        [unroll]
-        for (uint i = 0; i < steps; i++)
-        {
-            meshlet.Primitives[currentPrimitiveCount++] = uint2(i, ((i + 1) % steps));
-            meshlet.Vertices[currentVertexCount++] = position + float3(0, -radius * cos(i * stepAngle), radius * sin(i * stepAngle));
-        }
-
-        uint vertexOffset = currentVertexCount;
-
-        [unroll]
-        for (i = 0; i < steps; i++)
-        {
-            meshlet.Primitives[currentPrimitiveCount++] = uint2(vertexOffset + i, vertexOffset + ((i + 1) % steps));
-            meshlet.Vertices[currentVertexCount++] = position + float3(-radius * cos(i * stepAngle), radius * sin(i * stepAngle), 0);
-        }
-
-        vertexOffset = currentVertexCount;
-
-        [unroll]
-        for (i = 0; i < steps; i++)
-        {
-            meshlet.Primitives[currentPrimitiveCount++] = uint2(vertexOffset + i, vertexOffset + ((i + 1) % steps));
-            meshlet.Vertices[currentVertexCount++] = position + float3(-radius * cos(i * stepAngle), 0, radius * sin(i * stepAngle));
-        }
-
-        meshlet.Color = debugPrimitive.Color;
-    }
-
-    meshletBuffer[debugPrimitiveIndex] = meshlet;
-
-    GroupMemoryBarrierWithGroupSync();
-    
-    DispatchMesh(ceil((float)payload.DebugPrimitiveCount / payload.MaxDebugPrimitiveCountPerGroup), 1, 1, payload);
+    DispatchMesh(ceil((float)totalDebugPrimitiveCount / maxDebugPrimitiveCountPerGroup), 1, 1, sharedPayload);
 }
 
 [OutputTopology("line")]
@@ -218,38 +121,44 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
 void MeshMain(in uint groupId: SV_GroupID, 
               in uint groupThreadId: SV_GroupThreadID, 
               in payload Payload payload, 
-              out vertices VertexOutput vertices[128], 
-              out indices uint2 indices[128])
+              out vertices VertexOutput vertices[256], 
+              out indices uint2 indices[256])
 {
-    uint currentDebugPrimitiveCount = min(payload.MaxDebugPrimitiveCountPerGroup, payload.DebugPrimitiveCount - groupId * payload.MaxDebugPrimitiveCountPerGroup);
+    uint currentDebugPrimitiveCount = min(payload.MaxDebugPrimitiveCountPerGroup, payload.TotalDebugPrimitiveCount - groupId * payload.MaxDebugPrimitiveCountPerGroup);
     uint meshVertexCount = currentDebugPrimitiveCount * payload.VertexCount;
     uint meshPrimitiveCount = currentDebugPrimitiveCount * payload.PrimitiveCount;
 
     SetMeshOutputCounts(meshVertexCount, meshPrimitiveCount);
 
-    uint baseInstanceId = payload.InstanceOffset + groupId * payload.MaxDebugPrimitiveCountPerGroup;
+    uint baseInstanceId = groupId * payload.MaxDebugPrimitiveCountPerGroup;
+    uint currentGroupThreadId = groupThreadId * 2;
 
-    uint vertexId = groupThreadId % payload.VertexCount;
-    uint vertexOffset = groupThreadId / payload.VertexCount;
+    uint vertexId = currentGroupThreadId % payload.VertexCount;
+    uint vertexOffset = currentGroupThreadId / payload.VertexCount;
     uint vertexInstanceId = baseInstanceId + vertexOffset;
 
-    if (vertexInstanceId < parameters.DebugPrimitiveCount)
+    if (vertexInstanceId < payload.TotalDebugPrimitiveCount)
     {
-        Meshlet meshlet = meshletBuffer[parameters.InstanceOffset + vertexInstanceId];
-        float3 worldPosition = meshlet.Vertices[vertexId];
+        float4x4 worldViewProjMatrix = payload.WorldViewProjMatrices[vertexInstanceId];
+        float3 vertex = vertexBuffer[parameters.VertexBufferOffset + vertexId];
 
-        vertices[groupThreadId].Position = mul(mul(float4(worldPosition, 1), RenderPassParameters[0].ViewMatrix), RenderPassParameters[0].ProjectionMatrix);
-        vertices[groupThreadId].Color = float4(meshlet.Color, 1);
+        vertices[currentGroupThreadId].Position = mul(float4(vertex, 1), worldViewProjMatrix);
+        vertices[currentGroupThreadId].Color = float4(payload.Colors[vertexInstanceId], 1);
+
+        vertex = vertexBuffer[parameters.VertexBufferOffset + vertexId + 1];
+
+        vertices[currentGroupThreadId + 1].Position = mul(float4(vertex, 1), worldViewProjMatrix);
+        vertices[currentGroupThreadId + 1].Color = float4(payload.Colors[vertexInstanceId], 1);
     }
 
-    uint primitiveId = groupThreadId % payload.PrimitiveCount;
-    uint primitiveOffset = groupThreadId / payload.PrimitiveCount;
+    uint primitiveId = currentGroupThreadId % payload.PrimitiveCount;
+    uint primitiveOffset = currentGroupThreadId / payload.PrimitiveCount;
     uint primitiveInstanceId = baseInstanceId + primitiveOffset;
 
-    if (primitiveInstanceId < parameters.DebugPrimitiveCount)
+    if (primitiveInstanceId < payload.TotalDebugPrimitiveCount)
     {
-        Meshlet meshlet = meshletBuffer[parameters.InstanceOffset + primitiveInstanceId];
-        indices[groupThreadId] = meshlet.Primitives[primitiveId] + primitiveOffset * payload.VertexCount;
+        indices[currentGroupThreadId] = indexBuffer[parameters.IndexBufferOffset + primitiveId] + primitiveOffset * payload.VertexCount;
+        indices[currentGroupThreadId + 1] = indexBuffer[parameters.IndexBufferOffset + primitiveId + 1] + primitiveOffset * payload.VertexCount;
     }
 }
 
