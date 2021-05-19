@@ -1,23 +1,7 @@
-#define RootSignatureDef \
-    "RootFlags(0), " \
-    "RootConstants(num32BitConstants=5, b0)," \
-    "SRV(t0, flags = DATA_STATIC), " \
-    "SRV(t1, flags = DATA_STATIC)," \
-    "SRV(t2, flags = DATA_STATIC)," \
-    "SRV(t3, flags = DATA_STATIC)"
+#include "Common.hlsl"
 
-#pragma pack_matrix(row_major)
+#define RootSignatureDef RootSignatureDefinition(11)
 #define WAVE_SIZE 32
-
-static const float PI = 3.14159265f;
-
-enum DebugPrimitiveType : uint
-{
-    Line,
-    Cube,
-    Sphere,
-    Frustrum
-};
 
 struct ShaderParameters
 {
@@ -25,18 +9,19 @@ struct ShaderParameters
     uint InstanceOffset;
     uint VertexBufferOffset;
     uint IndexBufferOffset;
-    DebugPrimitiveType DebugPrimitiveType;
+    uint MaxDebugPrimitiveCountPerGroup;
+    uint VertexCount;
+    uint PrimitiveCount;
+    
+    uint DebugPrimitivesBuffer;
+    uint RenderPassParametersBuffer;
+    uint VertexBuffer;
+    uint IndexBuffer;
 };
 
 struct DebugPrimitive
 {
     float4x4 WorldMatrix;
-    float4 Color;
-};
-
-struct VertexInput
-{
-    float4 Position;
     float4 Color;
 };
 
@@ -63,11 +48,6 @@ struct Payload
 };
 
 ConstantBuffer<ShaderParameters> parameters : register(b0);
-StructuredBuffer<DebugPrimitive> debugPrimitives: register(t0);
-StructuredBuffer<RenderPass> RenderPassParameters: register(t1);
-
-StructuredBuffer<float3> vertexBuffer: register(t2);
-StructuredBuffer<uint2> indexBuffer: register(t3);
 
 groupshared Payload sharedPayload;
 
@@ -77,40 +57,24 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
     const uint maxDebugPrimitiveCount = WAVE_SIZE;
 
     uint totalDebugPrimitiveCount = min(maxDebugPrimitiveCount, parameters.TotalDebugPrimitiveCount - groupId * maxDebugPrimitiveCount);
-    uint vertexCount;
-    uint primitiveCount;
-    uint maxDebugPrimitiveCountPerGroup;
+    uint vertexCount = parameters.VertexCount;
+    uint primitiveCount = parameters.PrimitiveCount;
+    uint maxDebugPrimitiveCountPerGroup = parameters.MaxDebugPrimitiveCountPerGroup;
 
-    switch (parameters.DebugPrimitiveType)
-    {
-        case DebugPrimitiveType::Cube:
-            vertexCount = 8;
-            primitiveCount = 12;
-            maxDebugPrimitiveCountPerGroup = 20;
-            break;
-
-        case DebugPrimitiveType::Sphere:
-            vertexCount = 90;
-            primitiveCount = 90;
-            maxDebugPrimitiveCountPerGroup = 2;
-            break;
-
-        default:
-            vertexCount = 2;
-            primitiveCount = 1;
-            maxDebugPrimitiveCountPerGroup = 64;
-            break;
-    }
-  
     uint debugPrimitiveIndex = parameters.InstanceOffset + groupId * maxDebugPrimitiveCount + groupThreadId;
-    DebugPrimitive debugPrimitive = debugPrimitives[debugPrimitiveIndex];
+
+    ByteAddressBuffer debugPrimitives = buffers[parameters.DebugPrimitivesBuffer];
+    DebugPrimitive debugPrimitive = debugPrimitives.Load<DebugPrimitive>(debugPrimitiveIndex * sizeof(DebugPrimitive));
+
+    ByteAddressBuffer renderPassParameters = buffers[parameters.RenderPassParametersBuffer];
+    
     float4x4 worldMatrix = debugPrimitive.WorldMatrix;
 
     sharedPayload.TotalDebugPrimitiveCount = totalDebugPrimitiveCount;
     sharedPayload.MaxDebugPrimitiveCountPerGroup = maxDebugPrimitiveCountPerGroup;
     sharedPayload.VertexCount = vertexCount;
     sharedPayload.PrimitiveCount = primitiveCount;
-    sharedPayload.WorldViewProjMatrices[groupThreadId] = mul(worldMatrix, RenderPassParameters[0].ViewProjMatrix);
+    sharedPayload.WorldViewProjMatrices[groupThreadId] = mul(worldMatrix, renderPassParameters.Load<RenderPass>(0).ViewProjMatrix);
     sharedPayload.Colors[groupThreadId] = debugPrimitive.Color.rgb;
 
     DispatchMesh(ceil((float)totalDebugPrimitiveCount / maxDebugPrimitiveCountPerGroup), 1, 1, sharedPayload);
@@ -139,13 +103,15 @@ void MeshMain(in uint groupId: SV_GroupID,
 
     if (vertexInstanceId < payload.TotalDebugPrimitiveCount)
     {
+        ByteAddressBuffer vertexBuffer = buffers[parameters.VertexBuffer];
+
         float4x4 worldViewProjMatrix = payload.WorldViewProjMatrices[vertexInstanceId];
-        float3 vertex = vertexBuffer[parameters.VertexBufferOffset + vertexId];
+        float3 vertex = vertexBuffer.Load<float3>((parameters.VertexBufferOffset + vertexId) * sizeof(float3));
 
         vertices[currentGroupThreadId].Position = mul(float4(vertex, 1), worldViewProjMatrix);
         vertices[currentGroupThreadId].Color = float4(payload.Colors[vertexInstanceId], 1);
 
-        vertex = vertexBuffer[parameters.VertexBufferOffset + vertexId + 1];
+        vertex = vertexBuffer.Load<float3>((parameters.VertexBufferOffset + vertexId + 1) * sizeof(float3));
 
         vertices[currentGroupThreadId + 1].Position = mul(float4(vertex, 1), worldViewProjMatrix);
         vertices[currentGroupThreadId + 1].Color = float4(payload.Colors[vertexInstanceId], 1);
@@ -157,8 +123,10 @@ void MeshMain(in uint groupId: SV_GroupID,
 
     if (primitiveInstanceId < payload.TotalDebugPrimitiveCount)
     {
-        indices[currentGroupThreadId] = indexBuffer[parameters.IndexBufferOffset + primitiveId] + primitiveOffset * payload.VertexCount;
-        indices[currentGroupThreadId + 1] = indexBuffer[parameters.IndexBufferOffset + primitiveId + 1] + primitiveOffset * payload.VertexCount;
+        ByteAddressBuffer indexBuffer = buffers[parameters.IndexBuffer];
+
+        indices[currentGroupThreadId] = indexBuffer.Load<uint2>((parameters.IndexBufferOffset + primitiveId) * sizeof(uint2)) + primitiveOffset * payload.VertexCount;
+        indices[currentGroupThreadId + 1] = indexBuffer.Load<uint2>((parameters.IndexBufferOffset + primitiveId + 1) * sizeof(uint2)) + primitiveOffset * payload.VertexCount;
     }
 }
 

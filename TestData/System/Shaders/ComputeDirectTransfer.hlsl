@@ -1,9 +1,13 @@
-#define RootSignatureDef \
-    "RootFlags(0), " \
-    "DescriptorTable(SRV(t0, numDescriptors = 1, flags = DESCRIPTORS_VOLATILE))," \
-    "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT)"
+#include "Common.hlsl"
 
-Texture2D InputTexture: register(t0);
+#define RootSignatureDef RootSignatureDefinitionWithSampler(1, "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT)")
+
+struct ShaderParameters
+{
+    uint SourceTextureIndex;
+};
+
+ConstantBuffer<ShaderParameters> parameters : register(b0);
 SamplerState TextureSampler: register(s0);
 
 struct VertexOutput
@@ -12,35 +16,47 @@ struct VertexOutput
     float2 TextureCoordinates: TEXCOORD0;
 };
 
-VertexOutput VertexMain(const uint vertexId: SV_VertexID)
+static float4 rectangleVertices[] =
 {
-    VertexOutput output = (VertexOutput)0;
+    float4(-1, 1, 0, 1),
+    float4(1, 1, 0, 1),
+    float4(-1, -1, 0, 1),
+    float4(1, -1, 0, 1)
+};
 
-    if ((vertexId) % 4 == 0)
+static float2 rectangleTextureCoordinates[] =
+{
+    float2(0, 0),
+    float2(1, 0),
+    float2(0, 1),
+    float2(1, 1)
+};
+
+static uint3 rectangleIndices[] =
+{
+    uint3(0, 1, 2),
+    uint3(2, 1, 3)
+};
+
+[OutputTopology("triangle")]
+[NumThreads(128, 1, 1)]
+void MeshMain(in uint groupId : SV_GroupID, in uint groupThreadId : SV_GroupThreadID, out vertices VertexOutput vertices[128], out indices uint3 indices[128])
+{
+    const uint meshVertexCount = 4;
+    const uint meshPrimitiveCount = 2;
+
+    SetMeshOutputCounts(meshVertexCount, meshPrimitiveCount);
+
+    if (groupThreadId < meshVertexCount)
     {
-        output.Position = float4(-1, 1, 0, 1);
-        output.TextureCoordinates = float2(0, 0);
+        vertices[groupThreadId].Position = rectangleVertices[groupThreadId];
+        vertices[groupThreadId].TextureCoordinates = rectangleTextureCoordinates[groupThreadId];
     }
 
-    else if ((vertexId) % 4 == 1)
+    if (groupThreadId < meshPrimitiveCount)
     {
-        output.Position = float4(1, 1, 0, 1);
-        output.TextureCoordinates = float2(1, 0);
+        indices[groupThreadId] = rectangleIndices[groupThreadId];
     }
-
-    else if ((vertexId) % 4 == 2)
-    {
-        output.Position = float4(-1, -1, 0, 1);
-        output.TextureCoordinates = float2(0, 1);
-    }
-
-    else if ((vertexId) % 4 == 3)
-    {
-        output.Position = float4(1, -1, 0, 1);
-        output.TextureCoordinates = float2(1, 1);
-    }
-    
-    return output;
 }
 
 struct PixelOutput
@@ -51,7 +67,9 @@ struct PixelOutput
 PixelOutput PixelMain(const VertexOutput input)
 {
     PixelOutput output = (PixelOutput)0;
-    output.Color = InputTexture.Sample(TextureSampler, input.TextureCoordinates);
+
+    Texture2D diffuseTexture = textures[parameters.SourceTextureIndex];
+    output.Color = diffuseTexture.Sample(TextureSampler, input.TextureCoordinates);
     
     return output; 
 }

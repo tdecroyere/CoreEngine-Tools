@@ -1,17 +1,62 @@
-#define RootSignatureDef \
-    "RootFlags(0)," \
-    "SRV(t0, flags = DATA_STATIC), " \
+#include "Common.hlsl"
 
-    // "RootFlags(0), " \
-    // "SRV(t0, flags = DATA_STATIC), " \
-    // "SRV(t1, flags = DATA_STATIC), " \
-    // "SRV(t2, flags = DATA_STATIC), " \
-    // "DescriptorTable(SRV(t3, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE)), " \
-    // "StaticSampler(s0," \
-    //              "filter = FILTER_MIN_MAG_MIP_LINEAR)"
+#define RootSignatureDef RootSignatureDefinition(3)
 
-#pragma pack_matrix(row_major)
+struct ShaderParameters
+{
+    uint GeometryInstancesBuffer;
+    uint GeometryPacketsBuffer;
+    uint CamerasBuffer;
 
+    // uint MeshletBuffer;
+    // uint MeshBuffer;
+    // 
+};
+
+// NEW STRUCTURE
+struct Vertex
+{
+    float3 Position;
+    float3 Normal;
+    float2 TextureCoordinates;
+};
+
+struct Meshlet
+{
+    uint VertexCount;
+    uint VertexOffset;
+    uint PrimitiveCount;
+    uint PrimitiveOffset;
+};
+
+struct Mesh
+{
+    // TODO: Use the old fields for now
+    uint GeometryPacketIndex;
+    uint StartIndex;
+    uint VertexCount;
+    uint IndexCount;
+
+    // uint MeshletCount;
+    // uint MeshletOffset;
+};
+
+struct MeshInstance
+{
+    float4x4 WorldMatrix;
+    float4x4 WorldInvTransposeMatrix;
+    // BoundingBox WorldBoundingBox;
+    // TODO: Material
+};
+
+// StructuredBuffer<MeshInstance> MeshInstances;
+// StructuredBuffer<Meshlets> Meshlets;
+// StructuredBuffer<uint3> PrimitiveIndices;
+// StructuredBuffer<uint> VertexIndices;
+// StructuredBuffer<Vertex> Vertices;
+
+
+// OLD STRUCTURE
 struct BoundingFrustum
 {
     float4 LeftPlane;
@@ -44,11 +89,27 @@ struct Camera
     int OcclusionDepthCommandListIndex;
 };
 
-struct VertexInput
+struct GeometryPacket
 {
-    float3 Position;
-    float3 Normal;
-    float2 TextureCoordinates;
+    uint VertexBufferIndex;
+    uint IndexBufferIndex;
+};
+
+struct BoundingBox
+{
+    float3 MinPoint;
+    float3 MaxPoint;
+};
+
+struct GeometryInstance
+{
+    uint GeometryPacketIndex;
+    uint StartIndex;
+    uint VertexCount;
+    uint IndexCount;
+    // uint MaterialIndex;
+    float4x4 WorldMatrix;
+    BoundingBox WorldBoundingBox;
 };
 
 struct VertexOutput
@@ -60,33 +121,50 @@ struct VertexOutput
     float3 ViewDirection: TEXCOORD3;
 };
 
-StructuredBuffer<Camera> Cameras: register(t0);
+ConstantBuffer<ShaderParameters> parameters : register(b0);
 
-VertexOutput VertexMain(const uint vertexId: SV_VertexID, const uint instanceId: SV_InstanceID)
+[OutputTopology("triangle")]
+[NumThreads(128, 1, 1)]
+void MeshMain(in uint groupId : SV_GroupID, in uint groupThreadId : SV_GroupThreadID, out vertices VertexOutput vertices[128], out indices uint3 indices[128])
 {
-    VertexOutput output = (VertexOutput)0;
-    float4x4 viewProjMatrix = Cameras[0].ViewProjectionMatrix;
+    const uint instanceCount = 1;
 
-    if ((vertexId) % 4 == 0)
+    ByteAddressBuffer geometryInstances = buffers[parameters.GeometryInstancesBuffer];
+    GeometryInstance geometryInstance = geometryInstances.Load<GeometryInstance>(groupId * sizeof(GeometryInstance));
+
+    ByteAddressBuffer geometryPackets = buffers[parameters.GeometryPacketsBuffer];
+    GeometryPacket geometryPacket = geometryPackets.Load<GeometryPacket>(geometryInstance.GeometryPacketIndex * sizeof(GeometryPacket));
+
+    uint indexCount = geometryInstance.IndexCount;
+
+    const uint vertexCount = indexCount;
+    const uint primitiveCount = indexCount / 3;
+
+    SetMeshOutputCounts(vertexCount, primitiveCount);
+
+    if (groupThreadId < vertexCount)
     {
-        
-        output.Position = mul(float4(-1, 1, 0, 1), viewProjMatrix);
-        output.TextureCoordinates = float2(0, 0);
-    }
+        ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
+        Camera camera = cameras.Load<Camera>(0);
 
-    else if ((vertexId) % 4 == 1)
+        float4x4 worldViewProjMatrix = mul(geometryInstance.WorldMatrix, camera.ViewProjectionMatrix);
+
+        ByteAddressBuffer indexBuffer = buffers[geometryPacket.IndexBufferIndex];
+        uint index = indexBuffer.Load<uint>((geometryInstance.StartIndex + groupThreadId) * sizeof(uint));
+
+        ByteAddressBuffer vertexBuffer = buffers[geometryPacket.VertexBufferIndex];
+        Vertex vertex = vertexBuffer.Load<Vertex>(index * sizeof(Vertex));
+
+        vertices[groupThreadId].Position = mul(float4(vertex.Position, 1), worldViewProjMatrix);
+        vertices[groupThreadId].WorldNormal = float3(normalize(mul(float4(vertex.Normal, 0), geometryInstance.WorldMatrix)).xyz);
+    }
+  
+    if (groupThreadId < primitiveCount)
     {
-        output.Position = mul(float4(1, 1, 0, 1), viewProjMatrix);
-        output.TextureCoordinates = float2(1, 0);
+        // ByteAddressBuffer indexBuffer = buffers[geometryPacket.IndexBufferIndex];
+        // indices[groupThreadId] = indexBuffer.Load<uint3>(groupThreadId * sizeof(uint3));
+        indices[groupThreadId] = uint3(0, 1, 2) + groupThreadId * 3;
     }
-
-    else if ((vertexId) % 4 == 2)
-    {
-        output.Position = mul(float4(-1, -1, 0, 1), viewProjMatrix);
-        output.TextureCoordinates = float2(0, 1);
-    }
-
-    return output;
 }
 
 struct PixelOutput
@@ -98,7 +176,7 @@ PixelOutput PixelMain(const VertexOutput input)
 {
     PixelOutput output = (PixelOutput)0;
 
-    output.Color = float4(1, 1, 0, 1);
+    output.Color = float4(input.WorldNormal * 0.5 + 0.5, 1);
 
     return output; 
 }

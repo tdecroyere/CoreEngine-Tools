@@ -75,11 +75,11 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     }
 
                     // TODO: Optimize mesh instances 
-                    Logger.WriteMessage($"Before - Mesh SubObjects: {meshData.MeshSubObjects.Count} - Vertex Buffer Count: {meshData.Vertices.Count} - Index Buffer Count: {meshData.Indices.Count}");
+                    // Logger.WriteMessage($"Before - Mesh SubObjects: {meshData.MeshSubObjects.Count} - Vertex Buffer Count: {meshData.Vertices.Count} - Index Buffer Count: {meshData.Indices.Count}");
 
-                    meshData = OptimizeMesh(meshData);
+                    // meshData = OptimizeMesh(meshData);
 
-                    Logger.WriteMessage($"After - Mesh SubObjects: {meshData.MeshSubObjects.Count} - Vertex Buffer Count: {meshData.Vertices.Count} - Index Buffer Count: {meshData.Indices.Count}");
+                    // Logger.WriteMessage($"After - Mesh SubObjects: {meshData.MeshSubObjects.Count} - Vertex Buffer Count: {meshData.Vertices.Count} - Index Buffer Count: {meshData.Indices.Count}");
                     
                     // TODO: Optimize mesh indices
 
@@ -122,9 +122,31 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                         streamWriter.Write(index);
                     }
 
-                    streamWriter.Write(meshData.MeshSubObjects.Count);
+                    var newSubObjectList = new List<MeshSubObject>();
 
                     foreach (var subObject in meshData.MeshSubObjects)
+                    {
+                        var meshletMaxVertices = 126;
+                        var meshletCount = MathF.Ceiling((float)subObject.IndexCount / meshletMaxVertices);
+
+                        var currentIndex = subObject.StartIndex;
+
+                        for (var i = 0; i < meshletCount; i++)
+                        {
+                            var newSubObject = new MeshSubObject();
+                            newSubObject.StartIndex = currentIndex;
+                            newSubObject.IndexCount = (uint)MathF.Min(meshletMaxVertices, subObject.IndexCount - i * meshletMaxVertices);
+                            newSubObject.BoundingBox = subObject.BoundingBox;
+                            newSubObject.MaterialPath = subObject.MaterialPath;
+
+                            newSubObjectList.Add(newSubObject);
+                            currentIndex += newSubObject.IndexCount;
+                        }
+                    }
+
+                    streamWriter.Write(newSubObjectList.Count);
+
+                    foreach (var subObject in newSubObjectList)
                     {
                         // TODO: Replace that real material path
                         if (string.IsNullOrEmpty(subObject.MaterialPath))
@@ -146,6 +168,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                         streamWriter.Write(subObject.BoundingBox.MaxPoint.Y);
                         streamWriter.Write(subObject.BoundingBox.MaxPoint.Z);
                     }
+
 
                     streamWriter.Flush();
 
