@@ -3,6 +3,14 @@
 #define RootSignatureDef RootSignatureDefinition(11)
 #define WAVE_SIZE 32
 
+enum DebugPrimitiveType
+{
+    Line = 0,
+    Cube = 1,
+    Sphere = 2,
+    BoundingFrustum = 3
+};
+
 struct ShaderParameters
 {
     uint TotalDebugPrimitiveCount;
@@ -14,15 +22,18 @@ struct ShaderParameters
     uint PrimitiveCount;
     
     uint DebugPrimitivesBuffer;
-    uint RenderPassParametersBuffer;
+    uint CameraBuffer;
     uint VertexBuffer;
     uint IndexBuffer;
 };
 
 struct DebugPrimitive
 {
-    float4x4 WorldMatrix;
-    float4 Color;
+    float4 Parameter1;
+    float4 Parameter2;
+    float4 Parameter3;
+    float4 Parameter4;
+    float4 ColorAndPrimitiveType;
 };
 
 struct VertexOutput
@@ -31,9 +42,11 @@ struct VertexOutput
     nointerpolation float4 Color: TEXCOORD0;
 };
 
-struct RenderPass
+struct Camera
 {
-    float4x4 ViewProjMatrix;
+    float3 WorldPosition;
+    float4x4 ViewMatrix;
+    float4x4 ViewProjectionMatrix;
 };
 
 struct Payload
@@ -66,16 +79,38 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
     ByteAddressBuffer debugPrimitives = buffers[parameters.DebugPrimitivesBuffer];
     DebugPrimitive debugPrimitive = debugPrimitives.Load<DebugPrimitive>(debugPrimitiveIndex * sizeof(DebugPrimitive));
 
-    ByteAddressBuffer renderPassParameters = buffers[parameters.RenderPassParametersBuffer];
+    ByteAddressBuffer cameraBuffer = buffers[parameters.CameraBuffer];
     
-    float4x4 worldMatrix = debugPrimitive.WorldMatrix;
+    float4x4 worldMatrix = (float4x4)0;
+    DebugPrimitiveType debugPrimitiveType = (DebugPrimitiveType)debugPrimitive.ColorAndPrimitiveType.w;
+    
+    switch(debugPrimitiveType)
+    {
+        case DebugPrimitiveType::Line:
+            break;
+
+        case DebugPrimitiveType::Cube:
+            worldMatrix = CreateScaleTranslation(debugPrimitive.Parameter1.xyz, debugPrimitive.Parameter2.xyz);
+            break;
+
+        case DebugPrimitiveType::Sphere:
+            worldMatrix = CreateScaleTranslation((debugPrimitive.Parameter2.x * 2.0f).xxx, debugPrimitive.Parameter1.xyz);
+            break;
+
+        case DebugPrimitiveType::BoundingFrustum:
+            worldMatrix = float4x4(debugPrimitive.Parameter1,
+                                   debugPrimitive.Parameter2,
+                                   debugPrimitive.Parameter3,
+                                   debugPrimitive.Parameter4);
+            break;
+    }
 
     sharedPayload.TotalDebugPrimitiveCount = totalDebugPrimitiveCount;
     sharedPayload.MaxDebugPrimitiveCountPerGroup = maxDebugPrimitiveCountPerGroup;
     sharedPayload.VertexCount = vertexCount;
     sharedPayload.PrimitiveCount = primitiveCount;
-    sharedPayload.WorldViewProjMatrices[groupThreadId] = mul(worldMatrix, renderPassParameters.Load<RenderPass>(0).ViewProjMatrix);
-    sharedPayload.Colors[groupThreadId] = debugPrimitive.Color.rgb;
+    sharedPayload.WorldViewProjMatrices[groupThreadId] = mul(worldMatrix, cameraBuffer.Load<Camera>(0).ViewProjectionMatrix);
+    sharedPayload.Colors[groupThreadId] = debugPrimitive.ColorAndPrimitiveType.rgb;
 
     DispatchMesh(ceil((float)totalDebugPrimitiveCount / maxDebugPrimitiveCountPerGroup), 1, 1, sharedPayload);
 }

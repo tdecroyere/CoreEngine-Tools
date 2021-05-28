@@ -62,6 +62,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
 
                 if (meshData != null)
                 {
+                    var meshBoundingBox = new BoundingBox();
+
                     // Compute Bounding Boxes
                     foreach (var subObject in meshData.MeshSubObjects)
                     {
@@ -71,6 +73,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                             var vertex = meshData.Vertices[(int)index];
 
                             subObject.BoundingBox.Add(vertex.Position);
+                            meshBoundingBox.Add(vertex.Position);
                         }
                     }
 
@@ -169,6 +172,12 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                         streamWriter.Write(subObject.BoundingBox.MaxPoint.Z);
                     }
 
+                    streamWriter.Write(meshBoundingBox.MinPoint.X);
+                    streamWriter.Write(meshBoundingBox.MinPoint.Y);
+                    streamWriter.Write(meshBoundingBox.MinPoint.Z);
+                    streamWriter.Write(meshBoundingBox.MaxPoint.X);
+                    streamWriter.Write(meshBoundingBox.MaxPoint.Y);
+                    streamWriter.Write(meshBoundingBox.MaxPoint.Z);
 
                     streamWriter.Flush();
 

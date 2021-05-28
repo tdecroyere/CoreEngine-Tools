@@ -1,12 +1,14 @@
 #include "Common.hlsl"
 
 #define RootSignatureDef RootSignatureDefinition(3)
+#define WAVE_SIZE 32
 
 struct ShaderParameters
 {
-    uint GeometryInstancesBuffer;
-    uint GeometryPacketsBuffer;
+    uint MeshInstancesBuffer;
     uint CamerasBuffer;
+
+    uint MeshInstanceCount;
 
     // uint MeshletBuffer;
     // uint MeshBuffer;
@@ -23,28 +25,31 @@ struct Vertex
 
 struct Meshlet
 {
-    uint VertexCount;
-    uint VertexOffset;
-    uint PrimitiveCount;
-    uint PrimitiveOffset;
-};
-
-struct Mesh
-{
     // TODO: Use the old fields for now
-    uint GeometryPacketIndex;
+    uint VertexBufferIndex;
+    uint IndexBufferIndex;
     uint StartIndex;
     uint VertexCount;
     uint IndexCount;
 
-    // uint MeshletCount;
-    // uint MeshletOffset;
+    // uint VertexCount;
+    // uint VertexOffset;
+    // uint PrimitiveCount;
+    // uint PrimitiveOffset;
+};
+
+// TODO: Get rid of that and only use MeshletInstance?
+struct Mesh
+{
+    uint MeshletCount;
+    uint MeshletOffset;
 };
 
 struct MeshInstance
 {
     float4x4 WorldMatrix;
     float4x4 WorldInvTransposeMatrix;
+    uint MeshIndex;
     // BoundingBox WorldBoundingBox;
     // TODO: Material
 };

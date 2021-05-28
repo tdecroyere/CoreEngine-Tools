@@ -13,3 +13,12 @@ ByteAddressBuffer buffers[]: register(t0, space0);
 Texture2D textures[]: register(t0, space1);
 
 // TODO: Enable library compilation and linkage
+
+
+float4x4 CreateScaleTranslation(float3 scale, float3 translation)
+{
+    return float4x4(scale.x, 0, 0, 0,
+                    0, scale.y, 0, 0,
+                    0, 0, scale.z, 0,
+                    translation.x, translation.y, translation.z, 1);
+}
