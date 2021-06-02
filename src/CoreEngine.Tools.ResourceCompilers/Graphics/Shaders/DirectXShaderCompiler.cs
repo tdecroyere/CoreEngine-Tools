@@ -98,7 +98,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 if (useDxil)
                 {
                     buildProcess.StartInfo.FileName = $".\\dxc\\dxc.exe";
-                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /all_resources_bound -Zpr -I ..\\..\\TestData\\System\\Shaders\\Lib\\ /Zi -Qembed_debug -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /all_resources_bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ /Zi -Qembed_debug -T {target} -E {entryPoint} -Fo {outputShaderFile}";
                 }
 
                 else
