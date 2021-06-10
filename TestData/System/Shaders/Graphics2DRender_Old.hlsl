@@ -13,7 +13,7 @@ struct VertexOutput
     float4 Position: SV_Position;
     float2 TextureCoordinates: TEXCOORD0;
     nointerpolation uint InstanceId: TEXCOORD1;
-    nointerpolation bool IsOpaque: TEXCOORD2;
+    nointerpolation uint IsOpaque: TEXCOORD2;
 };
 
 struct RectangleSurface
@@ -22,8 +22,7 @@ struct RectangleSurface
     float2 TextureMinPoint;
     float2 TextureMaxPoint;
     uint TextureIndex;
-    bool IsOpaque;
-    uint2 Padding;
+    uint IsOpaque;
 };
 
 ConstantBuffer<ShaderParameters> parameters : register(b0);
@@ -122,7 +121,7 @@ PixelOutput PixelMain(const VertexOutput input)
 
     float4 textureColor = diffuseTexture.Sample(TextureSampler, input.TextureCoordinates);
 
-    if (!input.IsOpaque)
+    if (input.IsOpaque == 0)
     {
         if (textureColor.a == 0)
         {

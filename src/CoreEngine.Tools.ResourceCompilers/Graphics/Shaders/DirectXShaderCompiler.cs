@@ -15,8 +15,6 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
     {
         public static async Task<ReadOnlyMemory<byte>?> CompileDirectXShaderAsync(ReadOnlyMemory<byte> data)
         {
-            var useDxil = true;
-
             Logger.WriteMessage("Compiling DirectX shader with command line tools");
 
             string? windowsSdkToolPath = null;
@@ -65,69 +63,31 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             var outputShaderFile = Path.Combine(tempFolder, "tempShader.cso");
 
             await File.WriteAllBytesAsync(inputShaderFile, data.ToArray());
-            using var buildProcess = new Process();
 
             var shaderTable = new Dictionary<string, byte[]>();
+            var sprivShaderTable = new Dictionary<string, byte[]>();
 
             foreach (var entryPoint in entryPoints)
             {
-                var target = "cs_6_6";
+                var shaderData = await CompileShaderEntryPoint(entryPoint, inputShaderFile, outputShaderFile, isSpirv: false);
+                shaderTable.Add(entryPoint, shaderData);
 
-                if (entryPoint == "VertexMain")
-                {
-                    target = "vs_6_6";
-                }
+                shaderData = await CompileShaderEntryPoint(entryPoint, inputShaderFile, outputShaderFile, isSpirv: true);
 
-                else if (entryPoint == "PixelMain")
+                if (shaderData != null)
                 {
-                    target = "ps_6_6";
-                }
-
-                else if (entryPoint == "AmplificationMain")
-                {
-                    target = "as_6_6";
-                }
-
-                else if (entryPoint == "MeshMain")
-                {
-                    target = "ms_6_6";
-                }
-
-                Logger.WriteMessage($"Compiling entry point: {entryPoint} {target}");
-                
-                if (useDxil)
-                {
-                    buildProcess.StartInfo.FileName = $".\\dxc\\dxc.exe";
-                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /all_resources_bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ /Zi -Qembed_debug -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+                    sprivShaderTable.Add(entryPoint, shaderData);
                 }
 
                 else
                 {
-                    buildProcess.StartInfo.FileName = $"{windowsSdkToolPath}fxc.exe";
-                    buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /Zi /T {target} /E {entryPoint} /Fo {outputShaderFile}";
+                    sprivShaderTable.Add(entryPoint, Array.Empty<byte>());
                 }
-
-                buildProcess.Start();
-                buildProcess.WaitForExit();
-
-                if (buildProcess.ExitCode != 0)
-                {
-                    return null;
-                }            
-
-                var shaderData = await File.ReadAllBytesAsync(outputShaderFile);
-                shaderTable.Add(entryPoint, shaderData);
             }
 
-            if (useDxil)
-            {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /all_resources_bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T rootsig_1_1 -E RootSignatureDef -Fo {outputShaderFile}";
-            }
-
-            else
-            {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} /nologo /T rootsig_1_1 /E RootSignatureDef /Fo {outputShaderFile}";
-            }
+            using var buildProcess = new Process();
+            buildProcess.StartInfo.FileName = $".\\dxc\\dxc.exe";
+            buildProcess.StartInfo.Arguments = $"{inputShaderFile} -all-resources-bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T rootsig_1_1 -E RootSignatureDef -Fo {outputShaderFile}";
 
             buildProcess.Start();
             buildProcess.WaitForExit();
@@ -139,10 +99,82 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var rootSignatureData = await File.ReadAllBytesAsync(outputShaderFile);
 
+            var dxilOutput = WriteShaderTable(shaderTable, rootSignatureData);
+            var sprivOutput = WriteShaderTable(sprivShaderTable, null);
+
             var destinationMemoryStream = new MemoryStream();
             using var streamWriter = new BinaryWriter(destinationMemoryStream);
-            streamWriter.Write(rootSignatureData.Length); // TODO: Use span overload?
-            streamWriter.Write(rootSignatureData);
+            
+            streamWriter.Write(dxilOutput.Length);
+            streamWriter.Write(dxilOutput);
+            streamWriter.Write(sprivOutput);
+
+            destinationMemoryStream.Flush();
+            return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+        }
+
+        private static Task<byte[]?> CompileShaderEntryPoint(string entryPoint, string inputShaderFile, string outputShaderFile, bool isSpirv)
+        {
+            // TODO: Use the DXC lib instead of the exe
+            
+            var target = "cs_6_6";
+
+            if (entryPoint == "VertexMain")
+            {
+                target = "vs_6_6";
+            }
+
+            else if (entryPoint == "PixelMain")
+            {
+                target = "ps_6_6";
+            }
+
+            else if (entryPoint == "AmplificationMain")
+            {
+                target = "as_6_6";
+            }
+
+            else if (entryPoint == "MeshMain")
+            {
+                target = "ms_6_6";
+            }
+
+            Logger.WriteMessage($"Compiling entry point: {entryPoint} {target} (OutputFormat: {(isSpirv ? "SPIR-V" : "DXIL")})");
+            
+            using var buildProcess = new Process();
+            buildProcess.StartInfo.FileName = $".\\dxc\\dxc.exe";
+
+            if (!isSpirv)
+            {
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -all-resources-bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+            }
+
+            else
+            {
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -spirv -fspv-target-env=vulkan1.1 -all-resources-bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+            }
+
+            buildProcess.Start();
+            buildProcess.WaitForExit();
+
+            if (buildProcess.ExitCode != 0)
+            {
+                return Task.FromResult<byte[]?>(null);
+            }            
+
+            return File.ReadAllBytesAsync(outputShaderFile);
+        }
+
+        private static byte[] WriteShaderTable(Dictionary<string, byte[]> shaderTable, byte[]? rootSignatureData)
+        {
+            var destinationMemoryStream = new MemoryStream();
+            using var streamWriter = new BinaryWriter(destinationMemoryStream);
+
+            if (rootSignatureData != null)
+            {
+                streamWriter.Write(rootSignatureData.Length); // TODO: Use span overload?
+                streamWriter.Write(rootSignatureData);
+            }
 
             streamWriter.Write(shaderTable.Keys.Count);
 
@@ -155,9 +187,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             }
 
             streamWriter.Flush();
-
             destinationMemoryStream.Flush();
-            return new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
+            return destinationMemoryStream.ToArray();
         }
     }
 }

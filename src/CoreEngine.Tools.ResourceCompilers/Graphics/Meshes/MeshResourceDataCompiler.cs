@@ -185,7 +185,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Meshes
                     var resourceData = new Memory<byte>(destinationMemoryStream.GetBuffer(), 0, (int)destinationMemoryStream.Length);
                     var resourceEntry = new ResourceEntry($"{Path.GetFileNameWithoutExtension(context.SourceFilename)}{this.DestinationExtension}", resourceData);
 
-                    return new ReadOnlyMemory<ResourceEntry>(new ResourceEntry[] { resourceEntry });
+                    return new ReadOnlyMemory<ResourceEntry>(new ResourceEntry[] { resourceEntry });
                 }
             }
 

@@ -120,14 +120,16 @@ namespace CoreEngineInteropGenerator
                 var cppImplementationTypes = new Dictionary<string, string>()
                 {
                     { "INativeUIService", "WindowsNativeUIService" },
-                    { "IGraphicsService", "Direct3D12GraphicsService" },
+                    { "IGraphicsService", "Direct3D12GraphicsService,VulkanGraphicsService" },
                     { "IInputsService", "WindowsInputsService" }
                 };
 
-                output = CppCodeGenerator.GenerateInteropCode(compilationUnit, cppImplementationTypes);
+                var cppOutput = CppCodeGenerator.GenerateInteropCode(compilationUnit, cppImplementationTypes);
                 
-                outputFileName = Path.GetFileName(inputFile).Substring(1).Replace(".cs", "Interop.h");
-                await File.WriteAllTextAsync(Path.Combine(cppOutputPath, outputFileName), output);
+                foreach (var cppOutputEntry in cppOutput)
+                {
+                    await File.WriteAllTextAsync(Path.Combine(cppOutputPath, cppOutputEntry.Path), cppOutputEntry.Content);
+                }
             }
         }
     }
