@@ -1,6 +1,6 @@
 #include "Common.hlsl"
 
-#define RootSignatureDef RootSignatureDefinitionWithSampler(2, "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT)")
+#define RootSignatureDef RootSignatureDefinitionWithSampler(2, "StaticSampler(s0, space = 2, filter = FILTER_MIN_MAG_MIP_POINT)")
 
 struct ShaderParameters
 {
@@ -25,8 +25,9 @@ struct RectangleSurface
     uint IsOpaque;
 };
 
+[[vk::push_constant]]
 ConstantBuffer<ShaderParameters> parameters : register(b0);
-SamplerState TextureSampler: register(s0);
+SamplerState TextureSampler: register(s0, space2);
 
 static float4 rectangleVertices[] =
 {
@@ -51,12 +52,12 @@ static float4 rectangleTextureCoordinatesWeights[] =
 };
 
 [OutputTopology("triangle")]
-[NumThreads(128, 1, 1)]
-void MeshMain(in uint groupId : SV_GroupID, in uint groupThreadId : SV_GroupThreadID, out vertices VertexOutput vertices[256], out indices uint3 indices[256])
+[NumThreads(32, 1, 1)]
+void MeshMain(in uint groupId : SV_GroupID, in uint groupThreadId : SV_GroupThreadID, out vertices VertexOutput vertices[128], out indices uint3 indices[128])
 {
     const uint surfaceVertexCount = 4;
     const uint surfacePrimitiveCount = 2;
-    const uint maxSurfaceCount = 64;
+    const uint maxSurfaceCount = 16;
 
     uint currentSurfaceCount = min(maxSurfaceCount, parameters.RectangleCount - groupId * maxSurfaceCount);
     uint meshVertexCount = currentSurfaceCount * surfaceVertexCount;

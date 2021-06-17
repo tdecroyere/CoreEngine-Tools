@@ -146,12 +146,12 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             if (!isSpirv)
             {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -all-resources-bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -Zpr -all-resources-bound -Wno-ignored-attributes -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T {target} -E {entryPoint} -Fo {outputShaderFile}";
             }
 
             else
             {
-                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -spirv -fspv-target-env=vulkan1.1 -all-resources-bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T {target} -E {entryPoint} -Fo {outputShaderFile}";
+                buildProcess.StartInfo.Arguments = $"{inputShaderFile} -spirv -Zpr -fspv-target-env=vulkan1.1 -fvk-use-dx-layout -all-resources-bound -I ..\\..\\TestData\\System\\Shaders\\Lib\\ -T {target} -E {entryPoint} -Fo {outputShaderFile}";
             }
 
             buildProcess.Start();

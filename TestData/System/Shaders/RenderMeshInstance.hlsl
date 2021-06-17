@@ -121,6 +121,7 @@ struct Payload
     uint GroupOffsets[WAVE_SIZE + 1];
 };
 
+[[vk::push_constant]]
 ConstantBuffer<ShaderParameters> parameters : register(b0);
 
 groupshared Payload sharedPayload;
@@ -270,7 +271,7 @@ void AmplificationMain(uint threadId : SV_DispatchThreadID, in uint groupId: SV_
 }
 
 [OutputTopology("triangle")]
-[NumThreads(128, 1, 1)]
+[NumThreads(WAVE_SIZE, 1, 1)]
 void MeshMain(in uint groupId : SV_GroupID, 
               in uint groupThreadId : SV_GroupThreadID, 
               in payload Payload payload, 
@@ -324,24 +325,31 @@ void MeshMain(in uint groupId : SV_GroupID,
         ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
         Camera camera = cameras.Load<Camera>(0);
 
-        ByteAddressBuffer indexBuffer = buffers[meshlet.IndexBufferIndex];
-        uint index = indexBuffer.Load<uint>((meshlet.StartIndex + groupThreadId) * sizeof(uint));
+        for (uint i = 0; i < vertexCount; i += WAVE_SIZE)
+        {
+            ByteAddressBuffer indexBuffer = buffers[meshlet.IndexBufferIndex];
+            uint index = indexBuffer.Load<uint>((meshlet.StartIndex + groupThreadId + i) * sizeof(uint));
 
-        ByteAddressBuffer vertexBuffer = buffers[meshlet.VertexBufferIndex];
-        Vertex vertex = vertexBuffer.Load<Vertex>(index * sizeof(Vertex));
+            ByteAddressBuffer vertexBuffer = buffers[meshlet.VertexBufferIndex];
+            Vertex vertex = vertexBuffer.Load<Vertex>(index * sizeof(Vertex));
 
-        float3 worldPosition = mul(float4(vertex.Position, 1), meshInstance.WorldMatrix);
+            float3 worldPosition = mul(float4(vertex.Position, 1), meshInstance.WorldMatrix);
 
-        vertices[groupThreadId].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
-        vertices[groupThreadId].WorldNormal = mul(vertex.Normal, meshInstance.WorldInvTransposeMatrix);
-        vertices[groupThreadId].MeshletIndex = meshletIndex;
+            vertices[groupThreadId + i].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
+            vertices[groupThreadId + i].WorldNormal = mul(vertex.Normal, meshInstance.WorldInvTransposeMatrix);
+            vertices[groupThreadId + i].MeshletIndex = meshletIndex;
+        }
     }
   
     if (groupThreadId < primitiveCount)
     {
         // ByteAddressBuffer indexBuffer = buffers[geometryPacket.IndexBufferIndex];
         // indices[groupThreadId] = indexBuffer.Load<uint3>(groupThreadId * sizeof(uint3));
-        indices[groupThreadId] = uint3(0, 1, 2) + groupThreadId * 3;
+
+        for (uint i = 0; i < primitiveCount; i += WAVE_SIZE)
+        {
+            indices[groupThreadId + i] = uint3(0, 1, 2) + (groupThreadId + i) * 3;
+        }
     }
 }
 

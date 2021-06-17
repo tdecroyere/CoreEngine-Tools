@@ -1,14 +1,17 @@
 #include "Common.hlsl"
 
-#define RootSignatureDef RootSignatureDefinitionWithSampler(1, "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT)")
+#define RootSignatureDef RootSignatureDefinition(1)
+// #define RootSignatureDef RootSignatureDefinitionWithSampler(1, "StaticSampler(s0, space = 3, filter = FILTER_MIN_MAG_MIP_POINT)")
 
+// TODO: Refactor root definition so that shaders never attribute slots/spaces
 struct ShaderParameters
 {
     uint SourceTextureIndex;
 };
 
+[[vk::push_constant]]
 ConstantBuffer<ShaderParameters> parameters : register(b0);
-SamplerState TextureSampler: register(s0);
+SamplerState TextureSampler: register(s0, space3);
 
 struct VertexOutput
 {
@@ -68,8 +71,21 @@ PixelOutput PixelMain(const VertexOutput input)
 {
     PixelOutput output = (PixelOutput)0;
 
+    if (parameters.SourceTextureIndex == 1)
+    {
+        output.Color = float4(1, 0, 0, 1);
+    }
+
+    else
+    {
+        output.Color = float4(0, 0, 1, 1);
+    }
     Texture2D diffuseTexture = textures[parameters.SourceTextureIndex];
-    output.Color = diffuseTexture.Sample(TextureSampler, input.TextureCoordinates);
+    // // Texture2D diffuseTexture = textures[25];
+    output.Color = diffuseTexture.Load(int3(input.Position.xy, 0));
+    // // output.Color = diffuseTexture.Load(int3(parameters.SourceTextureIndex, 0, 0));
+
+    // output.Color = diffuseTexture.Sample(TextureSampler, input.TextureCoordinates);
     
     return output; 
 }
