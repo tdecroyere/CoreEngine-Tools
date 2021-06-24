@@ -68,22 +68,18 @@ struct Vertex
 struct Mesh
 {
     uint MeshletCount;
-    uint MeshletOffset;
+    uint VerticesBufferIndex;
+    uint VertexIndicesBufferIndex;
+    uint TriangleIndicesBufferIndex;
+    uint MeshletBufferIndex;
 };
 
 struct Meshlet
 {
-    // TODO: Use the old fields for now
-    uint VertexBufferIndex;
-    uint IndexBufferIndex;
-    uint StartIndex;
     uint VertexCount;
-    uint IndexCount;
-
-    // uint VertexCount;
-    // uint VertexOffset;
-    // uint PrimitiveCount;
-    // uint PrimitiveOffset;
+    uint VertexOffset;
+    uint TriangleCount;
+    uint TriangleOffset;
 };
 
 struct MeshInstance
@@ -275,8 +271,8 @@ void AmplificationMain(uint threadId : SV_DispatchThreadID, in uint groupId: SV_
 void MeshMain(in uint groupId : SV_GroupID, 
               in uint groupThreadId : SV_GroupThreadID, 
               in payload Payload payload, 
-              out vertices VertexOutput vertices[128], 
-              out indices uint3 indices[128])
+              out vertices VertexOutput vertices[64], 
+              out indices uint3 indices[42])
 {
     uint meshCount = payload.MeshCount;
 
@@ -303,17 +299,12 @@ void MeshMain(in uint groupId : SV_GroupID,
     ByteAddressBuffer meshBuffer = buffers[parameters.MeshBufferIndex];
     Mesh mesh = meshBuffer.Load<Mesh>(mappedMeshIndex * sizeof(Mesh));
 
-    ByteAddressBuffer meshletBuffer = buffers[parameters.MeshletBufferIndex];
-    Meshlet meshlet = meshletBuffer.Load<Meshlet>((mesh.MeshletOffset + meshletIndex) * sizeof(Meshlet));
+    ByteAddressBuffer meshletBuffer = buffers[mesh.MeshletBufferIndex];
+    Meshlet meshlet = meshletBuffer.Load<Meshlet>((meshletIndex) * sizeof(Meshlet));
 
-    uint indexCount = meshlet.IndexCount;
+    SetMeshOutputCounts(meshlet.VertexCount, meshlet.TriangleCount);
 
-    const uint vertexCount = indexCount;
-    const uint primitiveCount = indexCount / 3;
-
-    SetMeshOutputCounts(vertexCount, primitiveCount);
-
-    if (groupThreadId < vertexCount)
+    if (groupThreadId < meshlet.VertexCount)
     {
         uint lodInstance = (groupId - meshOffset) % meshInstanceCount;           // Instance index into this LOD level's instances
         uint meshInstanceOffset = payload.MeshInstanceOffsets[meshIndex] + lodInstance;  // Instance index into the payload instance list
@@ -325,14 +316,14 @@ void MeshMain(in uint groupId : SV_GroupID,
         ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
         Camera camera = cameras.Load<Camera>(0);
 
-        for (uint i = 0; i < vertexCount; i += WAVE_SIZE)
+        ByteAddressBuffer vertexIndicesBuffer = buffers[mesh.VertexIndicesBufferIndex];
+        ByteAddressBuffer verticesBuffer = buffers[mesh.VerticesBufferIndex];
+
+        for (uint i = 0; i < meshlet.VertexCount; i += WAVE_SIZE)
         {
-            ByteAddressBuffer indexBuffer = buffers[meshlet.IndexBufferIndex];
-            uint index = indexBuffer.Load<uint>((meshlet.StartIndex + groupThreadId + i) * sizeof(uint));
-
-            ByteAddressBuffer vertexBuffer = buffers[meshlet.VertexBufferIndex];
-            Vertex vertex = vertexBuffer.Load<Vertex>(index * sizeof(Vertex));
-
+            uint vertexIndex = vertexIndicesBuffer.Load<uint>((meshlet.VertexOffset + groupThreadId + i) * sizeof(uint));
+            Vertex vertex = verticesBuffer.Load<Vertex>(vertexIndex * sizeof(Vertex));
+ 
             float3 worldPosition = mul(float4(vertex.Position, 1), meshInstance.WorldMatrix);
 
             vertices[groupThreadId + i].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
@@ -341,14 +332,13 @@ void MeshMain(in uint groupId : SV_GroupID,
         }
     }
   
-    if (groupThreadId < primitiveCount)
+    if (groupThreadId < meshlet.TriangleCount)
     {
-        // ByteAddressBuffer indexBuffer = buffers[geometryPacket.IndexBufferIndex];
-        // indices[groupThreadId] = indexBuffer.Load<uint3>(groupThreadId * sizeof(uint3));
+        ByteAddressBuffer triangleIndicesBuffer = buffers[mesh.TriangleIndicesBufferIndex];
 
-        for (uint i = 0; i < primitiveCount; i += WAVE_SIZE)
+        for (uint i = 0; i < meshlet.TriangleCount; i += WAVE_SIZE)
         {
-            indices[groupThreadId + i] = uint3(0, 1, 2) + (groupThreadId + i) * 3;
+            indices[groupThreadId + i] = triangleIndicesBuffer.Load<uint3>((meshlet.TriangleOffset + groupThreadId + i) * sizeof(uint3));
         }
     }
 }

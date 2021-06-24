@@ -156,21 +156,21 @@ PixelOutput PixelMain(const VertexOutput input)
     // uint index = parameters.RectangleSurfacesIndex;
     // StructuredBuffer<RectangleSurface> rectangleSurfaces = ResourceDescriptorHeap[NonUniformResourceIndex(index)];
     // RectangleSurface rectangle = rectangleSurfaces[0];
-    // // ByteAddressBuffer rectangleSurfaces = ResourceDescriptorHeap[parameters.RectangleSurfacesIndex];
-    // // RectangleSurface rectangle = rectangleSurfaces.Load<RectangleSurface>(32);
+    ByteAddressBuffer rectangleSurfaces = ResourceDescriptorHeap[parameters.RectangleSurfacesIndex];
+    RectangleSurface rectangle = rectangleSurfaces.Load<RectangleSurface>(32);
     // // float4 color = rectangleSurfaces.Load4(0);
-    //output.Color = rectangle.Color;
+    output.Color = rectangle.Color;
     // output.Color = color;
 
-    if (input.InstanceId > 0)
-    {
-        output.Color = float4(0, 0, 1, 1);
-    }
+    // if (input.InstanceId > 0)
+    // {
+    //     output.Color = float4(0, 0, 1, 1);
+    // }
 
-    else
-    {
-        output.Color = float4(1, 0, 0, 1);
-    }
+    // else
+    // {
+    //     output.Color = float4(1, 0, 0, 1);
+    // }
     return output;
 
     // StructuredBuffer<RectangleSurface> rectangleSurfaces = ResourceDescriptorHeap[parameters.RectangleSurfacesIndex];
