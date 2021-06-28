@@ -56,6 +56,7 @@ bool Intersect(BoundingFrustum frustum, BoundingBox box)
     return true;
 }
 
+// TODO: Compress Vertex attributes to save bandwidth
 struct Vertex
 {
     float3 Position;
@@ -132,6 +133,7 @@ groupshared uint sharedGroupOffsets[WAVE_SIZE + 1];
 void AmplificationMain(uint threadId : SV_DispatchThreadID, in uint groupId: SV_GroupID, in uint groupThreadId: SV_GroupThreadID)
 {
     // TODO: Replace WAVE_SIZE with getLaneCount()
+    // TODO: ByteAddressBuffer.Load<T> seems to be very slow in Vulkan
 
     // Zero out groupshared memory which requires it.
     sharedMeshInstanceList[groupThreadId] = 0;
@@ -272,7 +274,7 @@ void MeshMain(in uint groupId : SV_GroupID,
               in uint groupThreadId : SV_GroupThreadID, 
               in payload Payload payload, 
               out vertices VertexOutput vertices[64], 
-              out indices uint3 indices[42])
+              out indices uint3 indices[126])
 {
     uint meshCount = payload.MeshCount;
 
@@ -319,16 +321,16 @@ void MeshMain(in uint groupId : SV_GroupID,
         ByteAddressBuffer vertexIndicesBuffer = buffers[mesh.VertexIndicesBufferIndex];
         ByteAddressBuffer verticesBuffer = buffers[mesh.VerticesBufferIndex];
 
-        for (uint i = 0; i < meshlet.VertexCount; i += WAVE_SIZE)
+        for (uint i = groupThreadId; i < meshlet.VertexCount; i += WAVE_SIZE)
         {
-            uint vertexIndex = vertexIndicesBuffer.Load<uint>((meshlet.VertexOffset + groupThreadId + i) * sizeof(uint));
+            uint vertexIndex = vertexIndicesBuffer.Load<uint>((meshlet.VertexOffset + i) * sizeof(uint));
             Vertex vertex = verticesBuffer.Load<Vertex>(vertexIndex * sizeof(Vertex));
  
             float3 worldPosition = mul(float4(vertex.Position, 1), meshInstance.WorldMatrix);
 
-            vertices[groupThreadId + i].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
-            vertices[groupThreadId + i].WorldNormal = mul(vertex.Normal, meshInstance.WorldInvTransposeMatrix);
-            vertices[groupThreadId + i].MeshletIndex = meshletIndex;
+            vertices[i].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
+            vertices[i].WorldNormal = mul(vertex.Normal, meshInstance.WorldInvTransposeMatrix);
+            vertices[i].MeshletIndex = meshletIndex;
         }
     }
   
@@ -336,9 +338,10 @@ void MeshMain(in uint groupId : SV_GroupID,
     {
         ByteAddressBuffer triangleIndicesBuffer = buffers[mesh.TriangleIndicesBufferIndex];
 
-        for (uint i = 0; i < meshlet.TriangleCount; i += WAVE_SIZE)
+        for (uint i = groupThreadId; i < meshlet.TriangleCount; i += WAVE_SIZE)
         {
-            indices[groupThreadId + i] = triangleIndicesBuffer.Load<uint3>((meshlet.TriangleOffset + groupThreadId + i) * sizeof(uint3));
+            uint8_t4_packed packedIndex = triangleIndicesBuffer.Load<uint8_t4_packed>((meshlet.TriangleOffset + i) * sizeof(uint8_t4_packed));
+            indices[i] = unpack_u8u32(packedIndex).xyz;
         }
     }
 }
