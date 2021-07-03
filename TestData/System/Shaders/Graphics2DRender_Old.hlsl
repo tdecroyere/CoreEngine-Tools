@@ -1,4 +1,4 @@
-#include "Common.hlsl"
+#include "CoreEngine.hlsl"
 
 #define RootSignatureDef RootSignatureDefinitionWithSampler(2, "StaticSampler(s0, space = 2, filter = FILTER_MIN_MAG_MIP_POINT)")
 

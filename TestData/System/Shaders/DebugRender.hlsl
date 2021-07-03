@@ -1,7 +1,6 @@
-#include "Common.hlsl"
+#include "CoreEngine.hlsl"
 
 #define RootSignatureDef RootSignatureDefinition(12)
-#define WAVE_SIZE 32
 
 enum DebugPrimitiveType
 {
@@ -78,6 +77,7 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
     uint loopCount = parameters.LoopCount;
     uint maxDebugPrimitiveCountPerGroup = parameters.MaxDebugPrimitiveCountPerGroup;
 
+    // TODO: Maybe we have a bug here, we should multiply groupId by the WAVE SIZE
     uint debugPrimitiveIndex = parameters.InstanceOffset + groupId * maxDebugPrimitiveCount + groupThreadId;
 
     ByteAddressBuffer debugPrimitives = buffers[parameters.DebugPrimitivesBuffer];

@@ -1,4 +1,4 @@
-#include "Common.hlsl"
+#include "CoreEngine.hlsl"
 
 #define RootSignatureDef RootSignatureDefinition(1)
 // #define RootSignatureDef RootSignatureDefinitionWithSampler(1, "StaticSampler(s0, space = 3, filter = FILTER_MIN_MAG_MIP_POINT)")
@@ -42,7 +42,7 @@ static uint3 rectangleIndices[] =
 };
 
 [OutputTopology("triangle")]
-[NumThreads(128, 1, 1)]
+[NumThreads(WAVE_SIZE, 1, 1)]
 void MeshMain(in uint groupId : SV_GroupID, in uint groupThreadId : SV_GroupThreadID, out vertices VertexOutput vertices[128], out indices uint3 indices[128])
 {
     const uint meshVertexCount = 4;
