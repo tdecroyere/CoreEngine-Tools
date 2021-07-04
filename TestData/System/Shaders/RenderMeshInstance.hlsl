@@ -32,7 +32,8 @@ struct Mesh
 
 struct Meshlet
 {
-    float4 Cone;
+    float4 ConeAxis;
+    float4 ConeApex;
     uint VertexCount;
     uint VertexOffset;
     uint TriangleCount;
@@ -66,7 +67,6 @@ struct VertexOutput
 struct Payload
 {
     uint MeshletIndexes[WAVE_SIZE];
-    uint MeshletCount;
 };
 
 [[vk::push_constant]]
@@ -74,9 +74,9 @@ ConstantBuffer<ShaderParameters> parameters : register(b0);
 
 groupshared Payload sharedPayload;
 
-bool IntersectCone(float4 cone, float3 ray)
+bool IntersectCone(float4 coneAxis, float3 coneApex, float3 cameraPosition)
 {
-    return dot(cone.xyz, ray) < cone.w;
+    return dot(normalize(coneApex - cameraPosition), coneAxis.xyz) < coneAxis.w;
 }
 
 [NumThreads(WAVE_SIZE, 1, 1)]
@@ -88,8 +88,7 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
     uint meshInstanceIndex = 0;
 
     uint meshletIndex = groupId * WAVE_SIZE + groupThreadId;
-    uint meshletIndexes[WAVE_SIZE];
-    uint meshletCount = 0;
+    bool isMeshletVisible = false;
 
     if (meshletIndex < parameters.MeshInstanceCount)
     {
@@ -102,20 +101,30 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
         ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
         MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
 
-        float3 cameraViewDirection = float3(0, 0, -1);
-        float4 normalCone = float4(normalize(mul(meshlet.Cone.xyz, meshInstance.WorldInvTransposeMatrix)), meshlet.Cone.w);
+        ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
+        Camera camera = cameras.Load<Camera>(0);
 
-        bool isMeshletVisible = true;//IntersectCone(normalCone, cameraViewDirection);
+        float3 cameraPosition = camera.WorldPosition;
+        
+        if (parameters.ShowMeshlets)
+        {
+            cameraPosition = -camera.WorldPosition;
+        }
 
-        uint laneIndex = WavePrefixCountBits(isMeshletVisible);
-        sharedPayload.MeshletIndexes[laneIndex] = meshletIndex;
+        // TODO: We need to transform the cone axis like a normal vector
+        float4 normalConeAxis = meshlet.ConeAxis;//float4(normalize(mul(meshlet.ConeAxis.xyz, meshInstance.WorldInvTransposeMatrix)), meshlet.ConeAxis.w);
+        float3 normalConeApex = mul(float4(meshlet.ConeApex.xyz, 1.0), meshInstance.WorldMatrix);
 
-        meshletCount = WaveActiveCountBits(isMeshletVisible);
+        isMeshletVisible = IntersectCone(normalConeAxis, normalConeApex, cameraPosition);
     }
 
-    meshletCount = WaveReadLaneFirst(meshletCount);
-    sharedPayload.MeshletCount = meshletCount;
+    if (isMeshletVisible)
+    {
+        uint laneIndex = WavePrefixCountBits(isMeshletVisible);
+        sharedPayload.MeshletIndexes[laneIndex] = meshletIndex;
+    }
 
+    uint meshletCount = WaveActiveCountBits(isMeshletVisible);
     DispatchMesh(meshletCount, 1, 1, sharedPayload);
 }
 
