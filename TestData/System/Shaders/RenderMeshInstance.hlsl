@@ -1,6 +1,6 @@
 #include "CoreEngine.hlsl"
 
-#define RootSignatureDef RootSignatureDefinition(5)
+#define RootSignatureDef RootSignatureDefinition(6)
 
 struct ShaderParameters
 {
@@ -9,7 +9,8 @@ struct ShaderParameters
 
     uint MeshBufferIndex;
     uint MeshInstanceBufferIndex;
-    uint MeshInstanceCount;
+    uint MeshletCount;
+    uint MeshInstanceIndex;
 };
 
 // TODO: Compress Vertex attributes to save bandwidth
@@ -32,8 +33,8 @@ struct Mesh
 
 struct Meshlet
 {
-    float4 ConeAxis;
-    float4 ConeApex;
+    uint PackedCone;
+    BoundingSphere BoundingSphere;
     uint VertexCount;
     uint VertexOffset;
     uint TriangleCount;
@@ -43,6 +44,7 @@ struct Meshlet
 struct MeshInstance
 {
     uint MeshIndex;
+    float Scale; // TODO: For the moment we support only uniform scaling
     float4x3 WorldMatrix;
     float3x3 WorldInvTransposeMatrix;
     BoundingBox WorldBoundingBox;
@@ -74,32 +76,43 @@ ConstantBuffer<ShaderParameters> parameters : register(b0);
 
 groupshared Payload sharedPayload;
 
-bool IntersectCone(float4 coneAxis, float3 coneApex, float3 cameraPosition)
+bool IsMeshletVisible(Meshlet meshlet, MeshInstance meshInstance, float3 cameraPosition)
 {
-    return dot(normalize(coneApex - cameraPosition), coneAxis.xyz) < coneAxis.w;
+    float4 cone = unpack_s8s32(meshlet.PackedCone) / 127.0;
+
+    if (cone.w == 1.0)
+    {
+        return true;
+    }
+
+    float4 normalCone = float4(normalize(mul(cone.xyz, meshInstance.WorldInvTransposeMatrix)), cone.w);
+
+    BoundingSphere boundingSphere;
+    boundingSphere.Center = mul(float4(meshlet.BoundingSphere.Center, 1.0), meshInstance.WorldMatrix);
+    boundingSphere.Radius = meshlet.BoundingSphere.Radius * meshInstance.Scale; // TODO: What to do if the scaling of the meshinstance is non uniform?
+
+    return IntersectCone(normalCone, boundingSphere, cameraPosition);
 }
 
 [NumThreads(WAVE_SIZE, 1, 1)]
 void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_GroupThreadID)
 {
-    // TODO: MeshIndex and MeshInstanceIndex is 0 for now
-    // TODO: We process only one mesh for now
-    uint meshIndex = 0;
-    uint meshInstanceIndex = 0;
+    uint meshInstanceIndex = parameters.MeshInstanceIndex;
 
+    ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
+    MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
+
+    uint meshIndex = meshInstance.MeshIndex;
     uint meshletIndex = groupId * WAVE_SIZE + groupThreadId;
     bool isMeshletVisible = false;
 
-    if (meshletIndex < parameters.MeshInstanceCount)
+    if (meshletIndex < parameters.MeshletCount)
     {
         ByteAddressBuffer meshBuffer = buffers[parameters.MeshBufferIndex];
         Mesh mesh = meshBuffer.Load<Mesh>(meshIndex * sizeof(Mesh));
 
         ByteAddressBuffer meshletBuffer = buffers[mesh.MeshletBufferIndex];
         Meshlet meshlet = meshletBuffer.Load<Meshlet>(meshletIndex * sizeof(Meshlet));
-
-        ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
-        MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
 
         ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
         Camera camera = cameras.Load<Camera>(0);
@@ -111,11 +124,7 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
             cameraPosition = -camera.WorldPosition;
         }
 
-        // TODO: We need to transform the cone axis like a normal vector
-        float4 normalConeAxis = meshlet.ConeAxis;//float4(normalize(mul(meshlet.ConeAxis.xyz, meshInstance.WorldInvTransposeMatrix)), meshlet.ConeAxis.w);
-        float3 normalConeApex = mul(float4(meshlet.ConeApex.xyz, 1.0), meshInstance.WorldMatrix);
-
-        isMeshletVisible = IntersectCone(normalConeAxis, normalConeApex, cameraPosition);
+        isMeshletVisible = IsMeshletVisible(meshlet, meshInstance, cameraPosition);
     }
 
     if (isMeshletVisible)
@@ -136,9 +145,12 @@ void MeshMain(in uint groupId: SV_GroupID,
               out vertices VertexOutput vertices[64], 
               out indices uint3 indices[126])
 {
-    uint meshIndex = 0;
-    uint meshInstanceIndex = 0;
+    uint meshInstanceIndex = parameters.MeshInstanceIndex;
 
+    ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
+    MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
+
+    uint meshIndex = meshInstance.MeshIndex;
     uint meshletIndex = payload.MeshletIndexes[groupId];
 
     ByteAddressBuffer meshBuffer = buffers[parameters.MeshBufferIndex];
@@ -151,9 +163,6 @@ void MeshMain(in uint groupId: SV_GroupID,
     
     if (groupThreadId < meshlet.VertexCount)
     {
-        ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
-        MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
-
         ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
         Camera camera = cameras.Load<Camera>(0);
 
@@ -169,6 +178,7 @@ void MeshMain(in uint groupId: SV_GroupID,
 
             vertices[i].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
             vertices[i].WorldNormal = mul(vertex.Normal, meshInstance.WorldInvTransposeMatrix);
+            //vertices[i].MeshletIndex = meshInstanceIndex;
             vertices[i].MeshletIndex = meshletIndex;
         }
     }
