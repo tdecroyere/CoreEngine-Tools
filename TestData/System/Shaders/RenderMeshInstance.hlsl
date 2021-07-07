@@ -189,7 +189,7 @@ void MeshMain(in uint groupId: SV_GroupID,
 
         for (uint i = groupThreadId; i < meshlet.TriangleCount; i += WAVE_SIZE)
         {
-            uint8_t4_packed packedIndex = triangleIndicesBuffer.Load<uint8_t4_packed>((meshlet.TriangleOffset + i) * sizeof(uint8_t4_packed));
+            uint packedIndex = triangleIndicesBuffer.Load<uint>((meshlet.TriangleOffset + i) * sizeof(uint));
             indices[i] = unpack_u8u32(packedIndex).xyz;
         }
     }

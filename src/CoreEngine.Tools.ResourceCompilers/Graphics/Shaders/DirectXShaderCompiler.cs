@@ -42,7 +42,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             var entryPoints = new List<string>();
             var shaderContent = System.Text.Encoding.UTF8.GetString(data.ToArray());
 
-            var regex = new Regex(@"(VertexMain|PixelMain|AmplificationMain|MeshMain|\[numthreads\(.*void\s(?<entryPoint>[^\(]*)\()", RegexOptions.Singleline);
+            var regex = new Regex(@"(VertexMain|PixelMain|AmplificationMain|MeshMain|ComputeMain|\[numthreads\(.*void\s(?<entryPoint>[^\(]*)\()", RegexOptions.Singleline);
             var matches = regex.Matches(shaderContent);
 
             foreach (Match match in matches)
@@ -57,6 +57,17 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                     entryPoints.Add(match.Groups[0].Value);
                 }
             }
+
+            var rootParameterRegex = new Regex(@"(?:RootSignatureDefinition|RootSignatureDefinitionWithSampler)\(([0-9]+)", RegexOptions.Singleline);
+            var rootParameterMatch = rootParameterRegex.Match(shaderContent);
+            var parameterCount = 0;
+
+            if (rootParameterMatch.Success)
+            {
+                parameterCount = int.Parse(rootParameterMatch.Groups[1].Value);
+                Logger.WriteMessage($"Parameter Count: {rootParameterMatch.Groups[1].Value}");
+            }
+            // TODO
 
             var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.hlsl");
@@ -99,8 +110,8 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
 
             var rootSignatureData = await File.ReadAllBytesAsync(outputShaderFile);
 
-            var dxilOutput = WriteShaderTable(shaderTable, rootSignatureData);
-            var sprivOutput = WriteShaderTable(sprivShaderTable, null);
+            var dxilOutput = WriteShaderTable(shaderTable, rootSignatureData, parameterCount);
+            var sprivOutput = WriteShaderTable(sprivShaderTable, null, parameterCount);
 
             var destinationMemoryStream = new MemoryStream();
             using var streamWriter = new BinaryWriter(destinationMemoryStream);
@@ -165,10 +176,12 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
             return File.ReadAllBytesAsync(outputShaderFile);
         }
 
-        private static byte[] WriteShaderTable(Dictionary<string, byte[]> shaderTable, byte[]? rootSignatureData)
+        private static byte[] WriteShaderTable(Dictionary<string, byte[]> shaderTable, byte[]? rootSignatureData, int parameterCount)
         {
             var destinationMemoryStream = new MemoryStream();
             using var streamWriter = new BinaryWriter(destinationMemoryStream);
+
+            streamWriter.Write(parameterCount);
 
             if (rootSignatureData != null)
             {
