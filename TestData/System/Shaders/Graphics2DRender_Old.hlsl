@@ -1,6 +1,6 @@
 #include "CoreEngine.hlsl"
 
-#define RootSignatureDef RootSignatureDefinitionWithSampler(2, "StaticSampler(s0, space = 2, filter = FILTER_MIN_MAG_MIP_POINT)")
+#define RootSignatureDef RootSignatureDefinitionWithSampler(2, "StaticSampler(s0, space = 3, filter = FILTER_MIN_MAG_MIP_POINT)")
 
 struct ShaderParameters
 {
@@ -27,7 +27,7 @@ struct RectangleSurface
 
 [[vk::push_constant]]
 ConstantBuffer<ShaderParameters> parameters : register(b0);
-SamplerState TextureSampler: register(s0, space2);
+SamplerState TextureSampler: register(s0, space3);
 
 static float4 rectangleVertices[] =
 {
