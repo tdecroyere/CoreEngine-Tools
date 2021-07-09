@@ -29,6 +29,11 @@ bool IntersectCone(float4 normalCone, BoundingSphere boundingSphere, float3 came
     return dot(viewVector, normalCone.xyz) < normalCone.w * length(viewVector) + boundingSphere.Radius;
 }
 
+bool IntersectPlane(float4 plane, BoundingSphere sphere)
+{
+    return (dot(plane, float4(sphere.Center, 1)) < sphere.Radius);
+}
+
 bool Intersect(float4 plane, BoundingBox box)
 {
     if (dot(plane, float4(box.MinPoint.x, box.MinPoint.y, box.MinPoint.z, 1)) <= 0) return true;
@@ -43,6 +48,19 @@ bool Intersect(float4 plane, BoundingBox box)
     return false;
 }
 
+bool IntersectFrustum(BoundingFrustum frustum, BoundingSphere sphere)
+{
+    if (!IntersectPlane(frustum.LeftPlane, sphere)) return false;
+    if (!IntersectPlane(frustum.RightPlane, sphere)) return false;
+    if (!IntersectPlane(frustum.TopPlane, sphere)) return false;
+    if (!IntersectPlane(frustum.BottomPlane, sphere)) return false;
+    if (!IntersectPlane(frustum.NearPlane, sphere)) return false;
+
+    return true;
+}
+
+// TODO: Be carreful with that method because each lane in the wave
+// will go to each tests even if the cull return false directly
 bool Intersect(BoundingFrustum frustum, BoundingBox box)
 {
     if (!Intersect(frustum.LeftPlane, box)) return false;
@@ -50,7 +68,8 @@ bool Intersect(BoundingFrustum frustum, BoundingBox box)
     if (!Intersect(frustum.TopPlane, box)) return false;
     if (!Intersect(frustum.BottomPlane, box)) return false;
     if (!Intersect(frustum.NearPlane, box)) return false;
-    if (!Intersect(frustum.FarPlane, box)) return false;
+
+    //if (!isnan(frustum.FarPlane.w) && !Intersect(frustum.FarPlane, box)) return false;
 
     return true;
 }

@@ -36,36 +36,68 @@ ConstantBuffer<ShaderParameters> parameters : register(b0);
 void ComputeMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_GroupThreadID)
 {
     uint meshInstanceIndex = groupId * WAVE_SIZE + groupThreadId;
+    bool isMeshInstanceVisible = false;
 
-    // TODO: Process only mesh instance for now
-    if (meshInstanceIndex > 0)
+    ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
+    MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
+ 
+    if (meshInstanceIndex < parameters.MeshInstanceCount)
+    {
+        ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
+        Camera camera = cameras.Load<Camera>(0);
+
+        isMeshInstanceVisible = Intersect(camera.BoundingFrustum, meshInstance.WorldBoundingBox);
+    }
+
+    uint visibleMeshInstanceCount = WaveActiveCountBits(isMeshInstanceVisible);
+    
+    if (visibleMeshInstanceCount == 0)
     {
         return;
     }
 
-    ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
-    MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
-
-    ByteAddressBuffer meshBuffer = buffers[parameters.MeshBufferIndex];
-    Mesh mesh = meshBuffer.Load<Mesh>(meshInstance.MeshIndex * sizeof(Mesh));
-
     RWByteAddressBuffer commandBuffer = rwBuffers[parameters.CommandBufferIndex];
+    uint commandOffset = 0;
 
-    uint commandIndex = 0;
+    if (groupThreadId == 0)
+    {
+        uint sizeInBytes = 0;
+        commandBuffer.GetDimensions(sizeInBytes);
 
-    DispatchMeshIndirectParam command = (DispatchMeshIndirectParam)0;
+        commandBuffer.InterlockedAdd(sizeInBytes - sizeof(uint), visibleMeshInstanceCount, commandOffset);
+    }
 
-    command.CamerasBuffer = parameters.CamerasBuffer;
-    command.ShowMeshlets = parameters.ShowMeshlets;
+    commandOffset = WaveReadLaneFirst(commandOffset);
+    
+    if (isMeshInstanceVisible)
+    {
+        uint laneIndex = WavePrefixCountBits(isMeshInstanceVisible);
+        uint commandIndex = commandOffset + laneIndex;
+        DispatchMeshIndirectParam command = (DispatchMeshIndirectParam)0;
 
-    command.MeshBufferIndex = parameters.MeshBufferIndex;
-    command.MeshInstanceBufferIndex = parameters.MeshInstanceBufferIndex;
-    command.MeshletCount = mesh.MeshletCount;
-    command.MeshInstanceIndex = meshInstanceIndex;
+        // TODO: Pack the draw calls and sort them by mesh type
+        ByteAddressBuffer meshBuffer = buffers[parameters.MeshBufferIndex];
+        Mesh mesh = meshBuffer.Load<Mesh>(meshInstance.MeshIndex * sizeof(Mesh));
 
-    command.ThreadGroupCount = (uint)ceil((float)mesh.MeshletCount / WAVE_SIZE);
-    command.Reserved1 = 1; // TODO: Put that value to 0 for vulkan
-    command.Reserved2 = 1;
+        command.CamerasBuffer = parameters.CamerasBuffer;
+        command.ShowMeshlets = parameters.ShowMeshlets;
 
-    commandBuffer.Store<DispatchMeshIndirectParam>(commandIndex, command);
+        command.MeshBufferIndex = parameters.MeshBufferIndex;
+        command.MeshInstanceBufferIndex = parameters.MeshInstanceBufferIndex;
+        command.MeshletCount = mesh.MeshletCount;
+        command.MeshInstanceIndex = meshInstanceIndex;
+
+        command.ThreadGroupCount = (uint)ceil((float)mesh.MeshletCount / WAVE_SIZE);
+
+    #ifdef VULKAN
+        command.Reserved1 = 0;
+        command.Reserved2 = 0;
+    #else
+        command.Reserved1 = 1;
+        command.Reserved2 = 1;
+    #endif
+
+        commandBuffer.Store<DispatchMeshIndirectParam>(commandIndex * sizeof(DispatchMeshIndirectParam), command);
+    }
+
 }

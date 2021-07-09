@@ -13,14 +13,6 @@ struct ShaderParameters
     uint MeshInstanceIndex;
 };
 
-struct Camera
-{
-    float3 WorldPosition;
-    float4x4 ViewMatrix;
-    float4x4 ViewProjectionMatrix;
-    BoundingFrustum BoundingFrustum;
-};
-
 struct VertexOutput
 {
     float4 Position: SV_Position;
@@ -39,8 +31,26 @@ ConstantBuffer<ShaderParameters> parameters : register(b0);
 
 groupshared Payload sharedPayload;
 
-bool IsMeshletVisible(Meshlet meshlet, MeshInstance meshInstance, float3 cameraPosition)
+bool IsMeshletVisible(Meshlet meshlet, MeshInstance meshInstance, Camera camera)
 {
+    // TODO: Optimize the if branch for wave operations
+
+    float3 cameraPosition = camera.WorldPosition;
+        
+    if (parameters.ShowMeshlets)
+    {
+        cameraPosition = -camera.WorldPosition;
+    }
+
+    BoundingSphere boundingSphere;
+    boundingSphere.Center = mul(float4(meshlet.BoundingSphere.Center, 1.0), meshInstance.WorldMatrix);
+    boundingSphere.Radius = meshlet.BoundingSphere.Radius * meshInstance.Scale; // TODO: What to do if the scaling of the meshinstance is non uniform?
+
+    if (!IntersectFrustum(camera.BoundingFrustum, boundingSphere))
+    {
+        return false;
+    }
+    
     float4 cone = unpack_s8s32(meshlet.PackedCone) / 127.0;
 
     if (cone.w == 1.0)
@@ -49,11 +59,6 @@ bool IsMeshletVisible(Meshlet meshlet, MeshInstance meshInstance, float3 cameraP
     }
 
     float4 normalCone = float4(normalize(mul(cone.xyz, meshInstance.WorldInvTransposeMatrix)), cone.w);
-
-    BoundingSphere boundingSphere;
-    boundingSphere.Center = mul(float4(meshlet.BoundingSphere.Center, 1.0), meshInstance.WorldMatrix);
-    boundingSphere.Radius = meshlet.BoundingSphere.Radius * meshInstance.Scale; // TODO: What to do if the scaling of the meshinstance is non uniform?
-
     return IntersectCone(normalCone, boundingSphere, cameraPosition);
 }
 
@@ -80,14 +85,7 @@ void AmplificationMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_Gr
         ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
         Camera camera = cameras.Load<Camera>(0);
 
-        float3 cameraPosition = camera.WorldPosition;
-        
-        if (parameters.ShowMeshlets)
-        {
-            cameraPosition = -camera.WorldPosition;
-        }
-
-        isMeshletVisible = IsMeshletVisible(meshlet, meshInstance, cameraPosition);
+        isMeshletVisible = IsMeshletVisible(meshlet, meshInstance, camera);
     }
 
     if (isMeshletVisible)
@@ -140,6 +138,7 @@ void MeshMain(in uint groupId: SV_GroupID,
             float3 worldPosition = mul(float4(vertex.Position, 1), meshInstance.WorldMatrix);
 
             vertices[i].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
+            //vertices[i].WorldNormal = mul(meshlet.BoundingSphere.Center, meshInstance.WorldInvTransposeMatrix);
             vertices[i].WorldNormal = mul(vertex.Normal, meshInstance.WorldInvTransposeMatrix);
             //vertices[i].MeshletIndex = meshInstanceIndex;
             vertices[i].MeshletIndex = meshletIndex;

@@ -34,3 +34,11 @@ struct MeshInstance
     float3x3 WorldInvTransposeMatrix;
     BoundingBox WorldBoundingBox;
 };
+
+struct Camera
+{
+    float3 WorldPosition;
+    float4x4 ViewMatrix;
+    float4x4 ViewProjectionMatrix;
+    BoundingFrustum BoundingFrustum;
+};
