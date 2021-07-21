@@ -33,9 +33,9 @@ struct DispatchMeshIndirectParam
 ConstantBuffer<ShaderParameters> parameters : register(b0);
 
 [NumThreads(WAVE_SIZE, 1, 1)]
-void ComputeMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_GroupThreadID)
+void ComputeMain(in uint threadId: SV_DispatchThreadId)
 {
-    uint meshInstanceIndex = groupId * WAVE_SIZE + groupThreadId;
+    uint meshInstanceIndex = threadId;
     bool isMeshInstanceVisible = false;
 
     ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
@@ -59,7 +59,7 @@ void ComputeMain(in uint groupId: SV_GroupID, in uint groupThreadId: SV_GroupThr
     RWByteAddressBuffer commandBuffer = rwBuffers[parameters.CommandBufferIndex];
     uint commandOffset = 0;
 
-    if (groupThreadId == 0)
+    if (WaveIsFirstLane())
     {
         uint sizeInBytes = 0;
         commandBuffer.GetDimensions(sizeInBytes);

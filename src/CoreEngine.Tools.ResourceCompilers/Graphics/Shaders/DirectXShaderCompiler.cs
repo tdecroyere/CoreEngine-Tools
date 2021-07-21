@@ -67,7 +67,7 @@ namespace CoreEngine.Tools.ResourceCompilers.Graphics.Shaders
                 parameterCount = int.Parse(rootParameterMatch.Groups[1].Value);
                 Logger.WriteMessage($"Parameter Count: {rootParameterMatch.Groups[1].Value}");
             }
-            // TODO
+            // TODO: Parse local thread count
 
             var tempFolder = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
             var inputShaderFile = Path.Combine(tempFolder, "tempShader.hlsl");

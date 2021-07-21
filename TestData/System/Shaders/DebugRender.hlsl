@@ -42,13 +42,6 @@ struct VertexOutput
     nointerpolation float4 Color: TEXCOORD0;
 };
 
-struct Camera
-{
-    float3 WorldPosition;
-    float4x4 ViewMatrix;
-    float4x4 ViewProjectionMatrix;
-};
-
 struct Payload
 {
     uint VertexCount;

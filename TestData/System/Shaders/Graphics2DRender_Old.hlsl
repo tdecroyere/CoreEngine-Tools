@@ -1,6 +1,6 @@
 #include "CoreEngine.hlsl"
 
-#define RootSignatureDef RootSignatureDefinitionWithSampler(2, "StaticSampler(s0, space = 3, filter = FILTER_MIN_MAG_MIP_POINT)")
+#define RootSignatureDef RootSignatureDefinitionWithSampler(2, "StaticSampler(s0, space = 4, filter = FILTER_MIN_MAG_MIP_POINT)")
 
 struct ShaderParameters
 {
@@ -27,7 +27,7 @@ struct RectangleSurface
 
 [[vk::push_constant]]
 ConstantBuffer<ShaderParameters> parameters : register(b0);
-SamplerState TextureSampler: register(s0, space3);
+SamplerState TextureSampler: register(s0, space4);
 
 static float4 rectangleVertices[] =
 {
@@ -134,7 +134,16 @@ PixelOutput PixelMain(const VertexOutput input)
 
     else
     {
-        output.Color = float4(textureColor.rgb, 1);
+        // TODO: Remove temp code, it is used for now to display the depth pyramid mips
+
+        //output.Color = float4(textureColor.rgb, 1);
+        uint surfaceWidth;
+        uint surfaceHeight;
+        uint numberOfLevels;
+        uint mipLevel = 6;
+
+        diffuseTexture.GetDimensions(mipLevel, surfaceWidth, surfaceHeight, numberOfLevels);
+        output.Color = float4(diffuseTexture.Load(float3(input.TextureCoordinates.x * surfaceWidth, input.TextureCoordinates.y * surfaceHeight, mipLevel)).rgb * 10, 1);
     }
 
     return output; 
