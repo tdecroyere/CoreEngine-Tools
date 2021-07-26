@@ -132,6 +132,11 @@ PixelOutput PixelMain(const VertexOutput input)
         output.Color = textureColor;
     }
 
+    else if(input.IsOpaque == 2)
+    {
+        output.Color = float4(rectangle.TextureMinPoint.x, rectangle.TextureMinPoint.y, rectangle.TextureMaxPoint.x, rectangle.TextureMaxPoint.y);
+    }
+
     else
     {
         // TODO: Remove temp code, it is used for now to display the depth pyramid mips

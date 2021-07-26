@@ -1,6 +1,6 @@
 #include "CoreEngine.hlsl"
 
-#define RootSignatureDef RootSignatureDefinition(6)
+#define RootSignatureDef RootSignatureDefinition(9)
 
 struct ShaderParameters
 {
@@ -8,8 +8,11 @@ struct ShaderParameters
     uint ShowMeshlets;
     uint MeshBufferIndex;
     uint MeshInstanceBufferIndex;
+    uint MeshInstanceVisibilityBufferIndex;
     uint CommandBufferIndex;
     uint MeshInstanceCount;
+    uint IsPostPass;
+    uint IsOcclusionCullingEnabled;
 };
 
 // TODO a macro system to generate the struct with the correct
@@ -40,13 +43,32 @@ void ComputeMain(in uint threadId: SV_DispatchThreadId)
 
     ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
     MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
- 
+
+    RWByteAddressBuffer meshInstanceVisibilityBuffer = rwBuffers[parameters.MeshInstanceVisibilityBufferIndex];
+    uint meshInstanceVisibility = meshInstanceVisibilityBuffer.Load<uint>(meshInstanceIndex * sizeof(uint));
+
+    if (parameters.IsPostPass == 0 && meshInstanceVisibility == 0)
+    {
+        return;
+    }
+
     if (meshInstanceIndex < parameters.MeshInstanceCount)
     {
         ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
         Camera camera = cameras.Load<Camera>(0);
 
         isMeshInstanceVisible = Intersect(camera.BoundingFrustum, meshInstance.WorldBoundingBox);
+    }
+
+    if (parameters.IsPostPass == 1)
+    {
+        if (parameters.IsOcclusionCullingEnabled == 1)
+        {
+            isMeshInstanceVisible = meshInstanceIndex < 100;
+        }
+
+        meshInstanceVisibilityBuffer.Store<uint>(meshInstanceIndex * sizeof(uint), isMeshInstanceVisible ? 1 : 0);
+        isMeshInstanceVisible = isMeshInstanceVisible && meshInstanceVisibility == 0;
     }
 
     uint visibleMeshInstanceCount = WaveActiveCountBits(isMeshInstanceVisible);
@@ -69,7 +91,7 @@ void ComputeMain(in uint threadId: SV_DispatchThreadId)
 
     commandOffset = WaveReadLaneFirst(commandOffset);
     
-    if (isMeshInstanceVisible)
+    if (isMeshInstanceVisible && (parameters.IsPostPass == 0 || (parameters.IsPostPass == 1 && meshInstanceVisibility == 0)))
     {
         uint laneIndex = WavePrefixCountBits(isMeshInstanceVisible);
         uint commandIndex = commandOffset + laneIndex;
@@ -99,5 +121,4 @@ void ComputeMain(in uint threadId: SV_DispatchThreadId)
 
         commandBuffer.Store<DispatchMeshIndirectParam>(commandIndex * sizeof(DispatchMeshIndirectParam), command);
     }
-
 }
