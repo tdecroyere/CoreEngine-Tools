@@ -1,4 +1,6 @@
 static const float PI = 3.14159265f;
+static const float FloatMinValue = -3.40282347E+38F;
+static const float FloatMaxValue = 3.40282347E+38F;
 
 struct BoundingFrustum
 {
@@ -14,6 +16,12 @@ struct BoundingBox
 {
     float3 MinPoint;
     float3 MaxPoint;
+};
+
+struct BoundingBox2D
+{
+    float2 MinPoint;
+    float2 MaxPoint;
 };
 
 struct BoundingSphere
@@ -70,6 +78,83 @@ bool Intersect(BoundingFrustum frustum, BoundingBox box)
     if (!Intersect(frustum.NearPlane, box)) return false;
 
     //if (!isnan(frustum.FarPlane.w) && !Intersect(frustum.FarPlane, box)) return false;
+
+    return true;
+}
+
+static float3 boundingBoxOffsets[] =
+{
+    float3(0, 0, 0),
+    float3(1, 0, 0),
+    float3(0, 1, 0),
+    float3(1, 1, 0),
+    float3(0, 0, 1),
+    float3(1, 0, 1),
+    float3(0, 1, 1),
+    float3(1, 1, 1)
+};
+
+BoundingBox TransformBoundingBox(BoundingBox boundingBox, float4x3 worldMatrix)
+{
+    BoundingBox result = (BoundingBox)0;
+
+    float3 boundingBoxSize = boundingBox.MaxPoint - boundingBox.MinPoint;
+
+    float3 minPoint = float3(FloatMaxValue, FloatMaxValue, FloatMaxValue);
+    float3 maxPoint = float3(FloatMinValue, FloatMinValue, FloatMinValue);
+
+    [unroll]
+    for (uint i = 0; i < 8; i++)
+    {
+        float3 sourcePoint = boundingBox.MinPoint + boundingBoxOffsets[i] * boundingBoxSize;
+        float3 transformedPoint = mul(float4(sourcePoint, 1), worldMatrix);
+
+        minPoint = min(transformedPoint, minPoint);
+        maxPoint = max(transformedPoint, maxPoint);
+    }
+
+    result.MinPoint = minPoint;
+    result.MaxPoint = maxPoint;
+
+    return result;
+}
+
+bool ProjectBoundingBox(BoundingBox boundingBox, float4x4 worldViewProjMatrix, out BoundingBox2D result, out float depth)
+{
+    float4x4 offsetMatrix = float4x4(0.5f, 0.0f, 0.0f, 0.0f,
+                                        0.0f, -0.5f, 0.0f, 0.0f,
+                                        0.0f, 0.0f, 1.0f, 0.0f,
+                                        0.5f, 0.5f, 0.0f, 1.0f);
+
+    float4x4 transformMatrix = mul(worldViewProjMatrix, offsetMatrix);
+    float3 boundingBoxSize = boundingBox.MaxPoint - boundingBox.MinPoint;
+
+    float2 minPoint = float2(FloatMaxValue, FloatMaxValue);
+    float2 maxPoint = float2(FloatMinValue, FloatMinValue);
+
+    depth = 0.0;
+
+    [unroll]
+    for (uint i = 0; i < 8; i++)
+    {
+        float3 sourcePoint = boundingBox.MinPoint + boundingBoxOffsets[i] * boundingBoxSize;
+
+        float4 projectedPoint = mul(float4(sourcePoint, 1.0f), transformMatrix);
+        projectedPoint /= projectedPoint.w;
+
+        if (projectedPoint.z <= 0.0)
+        {
+            return false;
+        }
+
+        minPoint = (projectedPoint.z > 0.0f) ? min(projectedPoint.xy, minPoint) : minPoint;
+        maxPoint = (projectedPoint.z > 0.0f) ? max(projectedPoint.xy, maxPoint) : maxPoint;
+
+        depth = max(projectedPoint.z, depth);
+    }
+
+    result.MinPoint = minPoint;
+    result.MaxPoint = maxPoint;
 
     return true;
 }

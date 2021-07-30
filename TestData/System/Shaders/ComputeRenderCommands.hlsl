@@ -1,6 +1,6 @@
 #include "CoreEngine.hlsl"
 
-#define RootSignatureDef RootSignatureDefinition(9)
+#define RootSignatureDef RootSignatureDefinitionWithSampler(12, "StaticSampler(s0, space = 4, filter = FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP)")
 
 struct ShaderParameters
 {
@@ -13,6 +13,10 @@ struct ShaderParameters
     uint MeshInstanceCount;
     uint IsPostPass;
     uint IsOcclusionCullingEnabled;
+
+    uint DepthPyramidTextureIndex;
+    uint DepthPyramidWidth;
+    uint DepthPyramidHeight;
 };
 
 // TODO a macro system to generate the struct with the correct
@@ -34,6 +38,7 @@ struct DispatchMeshIndirectParam
 
 [[vk::push_constant]]
 ConstantBuffer<ShaderParameters> parameters : register(b0);
+SamplerState TextureSampler: register(s0, space4);
 
 [NumThreads(WAVE_SIZE, 1, 1)]
 void ComputeMain(in uint threadId: SV_DispatchThreadId)
@@ -44,27 +49,49 @@ void ComputeMain(in uint threadId: SV_DispatchThreadId)
     ByteAddressBuffer meshInstanceBuffer = buffers[parameters.MeshInstanceBufferIndex];
     MeshInstance meshInstance = meshInstanceBuffer.Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
 
+    ByteAddressBuffer meshBuffer = buffers[parameters.MeshBufferIndex];
+    Mesh mesh = meshBuffer.Load<Mesh>(meshInstance.MeshIndex * sizeof(Mesh));
+
     RWByteAddressBuffer meshInstanceVisibilityBuffer = rwBuffers[parameters.MeshInstanceVisibilityBufferIndex];
     uint meshInstanceVisibility = meshInstanceVisibilityBuffer.Load<uint>(meshInstanceIndex * sizeof(uint));
+
+    ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
+    Camera camera = cameras.Load<Camera>(0);
 
     if (parameters.IsPostPass == 0 && meshInstanceVisibility == 0)
     {
         return;
     }
 
+    BoundingBox worldBoundingBox = TransformBoundingBox(mesh.BoundingBox, meshInstance.WorldMatrix);
+
     if (meshInstanceIndex < parameters.MeshInstanceCount)
     {
-        ByteAddressBuffer cameras = buffers[parameters.CamerasBuffer];
-        Camera camera = cameras.Load<Camera>(0);
-
-        isMeshInstanceVisible = Intersect(camera.BoundingFrustum, meshInstance.WorldBoundingBox);
+        isMeshInstanceVisible = Intersect(camera.BoundingFrustum, worldBoundingBox);
     }
 
     if (parameters.IsPostPass == 1)
     {
         if (parameters.IsOcclusionCullingEnabled == 1)
         {
-            isMeshInstanceVisible = meshInstanceIndex < 100;
+            float projectedBoundingBoxDepth;
+            BoundingBox2D projectedBoundingBox;
+            
+            if (ProjectBoundingBox(worldBoundingBox, camera.ViewProjectionMatrix, projectedBoundingBox, projectedBoundingBoxDepth))
+            {
+                float width = (projectedBoundingBox.MaxPoint.x - projectedBoundingBox.MinPoint.x) * parameters.DepthPyramidWidth;
+                float height = (projectedBoundingBox.MaxPoint.y - projectedBoundingBox.MinPoint.y) * parameters.DepthPyramidHeight;
+
+                float mipLevel = floor(log2(max(width, height)));
+
+                Texture2D depthPyramid = textures[parameters.DepthPyramidTextureIndex];
+
+                // TODO: There seems to be a bug with sponza sometimes hidden when looking behind the cube at the center of the scene
+                // TODO: SampleMinMax is not working for the moment in vulkan
+                float depth = depthPyramid.SampleLevel(TextureSampler, (projectedBoundingBox.MinPoint + projectedBoundingBox.MaxPoint) * 0.5, mipLevel).r;
+
+                isMeshInstanceVisible = isMeshInstanceVisible && projectedBoundingBoxDepth > depth;
+            }
         }
 
         meshInstanceVisibilityBuffer.Store<uint>(meshInstanceIndex * sizeof(uint), isMeshInstanceVisible ? 1 : 0);

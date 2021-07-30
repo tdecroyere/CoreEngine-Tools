@@ -14,6 +14,7 @@ struct Mesh
     uint VertexIndicesBufferIndex;
     uint TriangleIndicesBufferIndex;
     uint MeshletBufferIndex;
+    BoundingBox BoundingBox;
 };
 
 struct Meshlet
@@ -32,7 +33,6 @@ struct MeshInstance
     float Scale; // TODO: For the moment we support only uniform scaling
     float4x3 WorldMatrix;
     float3x3 WorldInvTransposeMatrix;
-    BoundingBox WorldBoundingBox;
 };
 
 struct Camera
