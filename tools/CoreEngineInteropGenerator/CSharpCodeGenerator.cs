@@ -178,7 +178,7 @@ namespace CoreEngineInteropGenerator
                 }
 
                 IndentCode(stringBuilder, 1);
-                stringBuilder.AppendLine($"public unsafe struct {interfaceNode.Identifier.Text.Substring(1)} : {interfaceNode.Identifier}");
+                stringBuilder.AppendLine($"public unsafe readonly struct {interfaceNode.Identifier.Text.Substring(1)} : {interfaceNode.Identifier}");
                 
                 IndentCode(stringBuilder, 1);
                 stringBuilder.AppendLine("{");

@@ -44,7 +44,7 @@ bool IsMeshletVisible(Meshlet meshlet, MeshInstance meshInstance, Camera camera)
 
     BoundingSphere boundingSphere;
     boundingSphere.Center = mul(float4(meshlet.BoundingSphere.Center, 1.0), meshInstance.WorldMatrix);
-    boundingSphere.Radius = meshlet.BoundingSphere.Radius * meshInstance.Scale; // TODO: What to do if the scaling of the meshinstance is non uniform?
+    boundingSphere.Radius = meshlet.BoundingSphere.Radius * meshInstance.Scale;
 
     if (!IntersectFrustum(camera.BoundingFrustum, boundingSphere))
     {
@@ -58,7 +58,7 @@ bool IsMeshletVisible(Meshlet meshlet, MeshInstance meshInstance, Camera camera)
         return true;
     }
 
-    float4 normalCone = float4(normalize(mul(cone.xyz, meshInstance.WorldInvTransposeMatrix)), cone.w);
+    float4 normalCone = float4(normalize(mul(float4(cone.xyz, 0), meshInstance.WorldMatrix).xyz), cone.w);
     return IntersectCone(normalCone, boundingSphere, cameraPosition);
 }
 
@@ -139,7 +139,7 @@ void MeshMain(in uint groupId: SV_GroupID,
 
             vertices[i].Position = mul(float4(worldPosition, 1), camera.ViewProjectionMatrix);
             //vertices[i].WorldNormal = mul(meshlet.BoundingSphere.Center, meshInstance.WorldInvTransposeMatrix);
-            vertices[i].WorldNormal = mul(vertex.Normal, meshInstance.WorldInvTransposeMatrix);
+            vertices[i].WorldNormal = mul(float4(vertex.Normal, 0), meshInstance.WorldMatrix).xyz;
             //vertices[i].MeshletIndex = meshInstanceIndex;
             vertices[i].MeshletIndex = meshletIndex;
         }

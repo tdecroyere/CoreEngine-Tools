@@ -6,7 +6,6 @@ struct Vertex
     float2 TextureCoordinates;
 };
 
-// TODO: Get rid of that and only use MeshletInstance?
 struct Mesh
 {
     uint MeshletCount;
@@ -30,9 +29,8 @@ struct Meshlet
 struct MeshInstance
 {
     uint MeshIndex;
-    float Scale; // TODO: For the moment we support only uniform scaling
+    float Scale;
     float4x3 WorldMatrix;
-    float3x3 WorldInvTransposeMatrix;
 };
 
 struct Camera
